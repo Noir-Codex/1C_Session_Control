@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Контроль сеансов 1С</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 2rem; font-family: system-ui, sans-serif; color: #172033; background: #f5f7fb; }
+    h1, h2, h3 { margin: 0; }
+    h2 { font-size: 1.3rem; }
+    h3 { font-size: 1.1rem; }
+    .page { width: min(100%, 88rem); margin: 0 auto; }
+    .page-header, .section-header, .company-header, .inline-form { display: flex; align-items: center; gap: 1rem; }
+    .page-header, .section-header, .company-header { justify-content: space-between; }
+    .page-header { margin-bottom: 1rem; }
+    .logout { display: flex; align-items: center; gap: .75rem; color: #526075; }
+    .notice, .error, .success { padding: .8rem 1rem; border-radius: .55rem; margin: .75rem 0; }
+    .notice { background: #e8f1ff; }
+    .error { color: #8c1d1d; background: #ffe8e8; }
+    .success { color: #155d35; background: #e5f8ed; }
+    section { margin: 1rem 0; padding: 1.25rem; border-radius: .75rem; background: white; box-shadow: 0 1px 4px #0001; }
+    table { width: 100%; border-collapse: collapse; margin-top: .8rem; }
+    th, td { padding: .6rem; border-bottom: 1px solid #e5e9f0; text-align: left; vertical-align: top; }
+    th { color: #526075; font-size: .9rem; }
+    code { font-size: .82em; overflow-wrap: anywhere; }
+    input[type="text"], input[type="number"] { min-width: 16rem; padding: .65rem .75rem; border: 1px solid #cbd3df; border-radius: .45rem; font: inherit; }
+    button { padding: .58rem .85rem; border: 1px solid #cbd3df; border-radius: .45rem; background: white; font: inherit; cursor: pointer; }
+    button.primary { border-color: #1d4ed8; color: white; background: #1d4ed8; }
+    button.danger { color: #a21c1c; }
+    button:disabled { cursor: not-allowed; opacity: .55; }
+    .muted { color: #667085; }
+    .badge { display: inline-block; padding: .15rem .45rem; border-radius: 999px; background: #edf2f7; font-size: .8rem; }
+    .badge.active { color: #155d35; background: #e5f8ed; }
+    .badge.warning { color: #8c1d1d; background: #ffe8e8; }
+    .summary { display: flex; flex-wrap: wrap; gap: 1rem; }
+    .summary-item { min-width: 10rem; padding: .8rem 1rem; border-radius: .6rem; background: #f5f7fb; }
+    .summary-value { display: block; font-size: 1.4rem; font-weight: 700; }
+    .base-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: .6rem; margin: 1rem 0; }
+    .base-option { display: flex; align-items: flex-start; gap: .6rem; padding: .7rem; border: 1px solid #e1e6ee; border-radius: .5rem; }
+    .base-option input { margin-top: .2rem; }
+    .base-option small { display: block; margin-top: .2rem; color: #667085; }
+    .company { border-left: 4px solid #2563eb; }
+    .company-meta { margin-top: .4rem; color: #667085; }
+    .company-tools { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; margin: 1rem 0; }
+    .limit-form { display: flex; align-items: center; gap: .6rem; padding: .75rem; border-radius: .55rem; background: #f5f7fb; }
+    .limit-form input { width: 7rem; min-width: 0; }
+    .actions { margin-top: .8rem; }
+    dialog { width: min(92vw, 70rem); max-height: 85vh; padding: 0; border: 0; border-radius: .8rem; box-shadow: 0 20px 60px #0004; }
+    dialog::backdrop { background: #17203380; }
+    .dialog-header { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.25rem; border-bottom: 1px solid #e5e9f0; background: white; }
+    .dialog-body { padding: 1.25rem; overflow-y: auto; }
+    .dialog-actions { position: sticky; bottom: 0; display: flex; justify-content: flex-end; gap: .75rem; padding: 1rem 1.25rem; border-top: 1px solid #e5e9f0; background: white; }
+    @media (max-width: 720px) {
+      body { padding: 1rem; }
+      .page-header, .section-header, .company-header, .inline-form { align-items: stretch; flex-direction: column; }
+      input[type="text"] { width: 100%; min-width: 0; }
+      .table-wrap { overflow-x: auto; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="page-header">
+      <h1>Контроль сеансов 1С</h1>
+      <form class="logout" action="/logout" method="post">
+        <span>{{ cluster_user }}</span>
+        <button type="submit">Выйти</button>
+      </form>
+    </div>
+
+    <div class="notice">Режим MONITOR_ONLY: приложение только читает сведения из 1С.</div>
+    {% if message %}<div class="success" role="status">{{ message }}</div>{% endif %}
+    {% if page_error %}<div class="error" role="alert">{{ page_error }}</div>{% endif %}
+    {% for error in errors %}
+      <div class="error"><strong>{{ error.server }}</strong> ({{ error.endpoint }}): {{ error.error }}</div>
+    {% endfor %}
+
+    <section>
+      <div class="summary">
+        <div class="summary-item"><span class="summary-value">{{ available_bases|length }}</span><span class="muted">обнаружено баз</span></div>
+        <div class="summary-item"><span class="summary-value">{{ companies|length }}</span><span class="muted">компаний</span></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-header">
+        <div>
+          <h2>Компании</h2>
+          <div class="muted">Создайте компанию, затем назначьте ей базы из списка.</div>
+        </div>
+        <form class="inline-form" action="/companies" method="post">
+          <input type="text" name="name" placeholder="Название компании" maxlength="120" required>
+          <button class="primary" type="submit">Создать</button>
+        </form>
+      </div>
+    </section>
+
+    {% for company in companies %}
+    <section class="company">
+      <div class="company-header">
+        <div>
+          <h2>{{ company.name }}</h2>
+          <div class="company-meta">
+            Баз: {{ company.bases|length }} · Активных сеансов: {{ company.sessions|length }} ·
+            {% if company.session_limit > 0 %}
+              Лимит: {{ company.session_limit }} · Осталось: {{ company.remaining_sessions }}
+            {% else %}
+              Лимит не задан
+            {% endif %}
+          </div>
+          <div class="company-meta">
+            Назначено:
+            {% for base in company.bases %}
+              <span class="badge">{{ base.infobase_name }}</span>
+            {% else %}
+              ни одной базы
+            {% endfor %}
+          </div>
+        </div>
+        <form action="/companies/{{ company.id }}/delete" method="post" onsubmit="return confirm('Удалить компанию и её привязки?')">
+          <button class="danger" type="submit">Удалить</button>
+        </form>
+      </div>
+
+      <div class="company-tools">
+        <button type="button" onclick="document.getElementById('bases-{{ company.id }}').showModal()">Базы</button>
+        <form class="limit-form" action="/companies/{{ company.id }}/session-limit" method="post">
+          <label for="limit-{{ company.id }}"><strong>Назначено сеансов</strong></label>
+          <input id="limit-{{ company.id }}" type="number" name="session_limit" min="0" max="1000000" value="{{ company.session_limit }}" required>
+          <button class="primary" type="submit">Сохранить лимит</button>
+        </form>
+        {% if company.over_limit %}<span class="badge warning">Лимит превышен</span>{% endif %}
+      </div>
+
+      <dialog id="bases-{{ company.id }}">
+        <form action="/companies/{{ company.id }}/bases" method="post">
+          <div class="dialog-header">
+            <div><h2>Базы — {{ company.name }}</h2><div class="muted">Отметьте базы и сохраните изменения.</div></div>
+            <button type="button" aria-label="Закрыть" onclick="this.closest('dialog').close()">Закрыть</button>
+          </div>
+          <div class="dialog-body">
+            <div class="base-grid">
+            {% for base in available_bases %}
+              {% set assigned_here = base.key in company.assigned_keys %}
+              {% set assigned_elsewhere = base.company_name and not assigned_here %}
+              <label class="base-option">
+                <input type="checkbox" name="base" value="{{ base.key }}"{% if assigned_here %} checked{% endif %}{% if assigned_elsewhere %} disabled{% endif %}>
+                <span>
+                  <strong>{{ base.infobase_name }}</strong>
+                  <small>{{ base.cluster_name }} · активных сеансов: {{ base.session_count }}{% if assigned_elsewhere %} · назначена: {{ base.company_name }}{% endif %}</small>
+                </span>
+              </label>
+            {% else %}
+              <div class="error">RAS не вернул информационные базы.</div>
+            {% endfor %}
+            </div>
+            {% for base in company.bases if not base.online %}
+              <div class="error">База {{ base.infobase_name }} сейчас недоступна в RAS, привязка сохранена.</div>
+            {% endfor %}
+          </div>
+          <div class="dialog-actions">
+            <button type="button" onclick="this.closest('dialog').close()">Отмена</button>
+            <button class="primary" type="submit">Сохранить привязки</button>
+          </div>
+        </form>
+      </dialog>
+
+      <h3 style="margin-top: 1.4rem">Общие сеансы по базам компании</h3>
+      <div class="muted">В таблицу автоматически попадают активные сеансы назначенных баз. Поле «Назначено сеансов» задаёт общий разрешённый лимит компании.</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Пользователь</th><th>База</th><th>Компьютер</th><th>Приложение</th><th>Начало</th><th>ID</th></tr></thead>
+          <tbody>
+          {% for session in company.sessions %}
+            <tr>
+              <td>{{ session.user_name or '—' }}</td>
+              <td>{{ session.infobase_name or session.infobase_id or '—' }}</td>
+              <td>{{ session.host or '—' }}</td>
+              <td>{{ session.app_id or '—' }}</td>
+              <td>{{ session.started_at or '—' }}</td>
+              <td><code>{{ session.id or '—' }}</code></td>
+            </tr>
+          {% else %}
+            <tr><td colspan="6">На назначенных базах активных сеансов нет. Проверьте, что база нужного сеанса отмечена выше, и нажмите «Сохранить привязки».</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+    {% else %}
+      <section><p class="muted">Компаний пока нет. Создайте первую компанию выше.</p></section>
+    {% endfor %}
+  </main>
+</body>
+</html>

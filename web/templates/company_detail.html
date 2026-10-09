@@ -1,0 +1,44 @@
+{% extends "admin_base.html" %}
+{% block body_data %} data-company-id="{{ company.id }}"{% endblock %}
+{% block page_actions %}<span class="badge {{ company.status_key }}" data-company-status><span class="status-dot {{ company.status_key }}"></span>{{ company.status_label }}</span><button class="button danger" type="button" data-open-dialog="delete-company">{{ icon('trash') }}Удалить</button>{% endblock %}
+{% block content %}
+<a class="back-link" href="/companies">{{ icon('arrow-left') }}Компании</a>
+
+<section class="panel limit-panel">
+  <div class="section-header"><div><h2>Общий лимит сеансов</h2><p>Суммарно по всем информационным базам компании.</p></div><strong class="limit-value"><span data-company-users>{{ company.user_session_count }}</span> / {{ company.session_limit if company.session_limit > 0 else '∞' }}</strong></div>
+  <progress class="limit-progress {{ company.status_key }}" data-company-progress max="{{ company.session_limit if company.session_limit > 0 else 1 }}" value="{{ company.user_session_count }}"></progress>
+  <div class="limit-details"><span>Используется: <b data-company-users>{{ company.user_session_count }}</b></span><span>Свободно: <b data-company-remaining>{{ company.remaining_sessions if company.remaining_sessions is not none else 'без ограничения' }}</b></span><span>Технических сеансов: <b data-company-ignored>{{ company.ignored_session_count }}</b></span></div>
+</section>
+
+<section class="panel table-panel">
+  <div class="panel-header"><div><h2>Информационные базы</h2><p>Базы, входящие в общий лимит компании.</p></div><button class="button primary" type="button" data-open-dialog="assign-bases">{{ icon('plus') }}Добавить базу</button></div>
+  <div class="table-scroll"><table class="admin-table"><thead><tr><th>Название базы</th><th>Сервер</th><th class="number">Пользовательские</th><th class="number">Технические</th><th>Статус</th></tr></thead><tbody>
+  {% for base in company.bases %}<tr><td><span class="resource-name">{{ icon('database') }}<strong title="{{ base.infobase_name }}">{{ base.infobase_name }}</strong></span></td><td>{{ base.server_name or base.server_endpoint }}</td><td class="number">{{ base.user_session_count or 0 }}</td><td class="number">{{ base.ignored_session_count or 0 }}</td><td><span class="badge {{ 'success' if base.online else 'danger' }}"><span class="status-dot {{ 'success' if base.online else 'danger' }}"></span>{{ 'Доступна' if base.online else 'Недоступна' }}</span></td></tr>
+  {% else %}<tr><td colspan="5"><div class="empty-state compact"><strong>К компании пока не привязано ни одной информационной базы</strong><button class="button primary" type="button" data-open-dialog="assign-bases">{{ icon('plus') }}Добавить базу</button></div></td></tr>{% endfor %}
+  </tbody></table></div>
+</section>
+
+<section class="panel table-panel">
+  <div class="panel-header"><div><h2>Активные пользовательские сеансы</h2><p>Только сеансы, которые учитываются в лимите компании.</p></div><label class="search-box">{{ icon('search') }}<input type="search" placeholder="Пользователь или база…" data-table-search="company-sessions"></label></div>
+  <div class="table-scroll"><table id="company-sessions" class="admin-table"><thead><tr><th>Пользователь</th><th>База</th><th>Компьютер</th><th>Тип</th><th>Начало</th><th>ID</th></tr></thead><tbody data-company-session-body>
+  {% for session in company.sessions %}<tr data-search-text="{{ (session.user_name ~ ' ' ~ session.infobase_name)|lower }}"><td><strong>{{ session.user_name or '—' }}</strong></td><td>{{ session.infobase_name or session.infobase_id or '—' }}</td><td>{{ session.host or '—' }}</td><td><span class="code-badge">{{ session.app_id or '—' }}</span></td><td>{{ session.started_at or '—' }}</td><td><code>{{ session.id or '—' }}</code></td></tr>
+  {% else %}<tr><td colspan="6"><div class="empty-state compact"><strong>Активных пользовательских сеансов нет</strong><span>Новые подключения появятся автоматически.</span></div></td></tr>{% endfor %}
+  </tbody></table></div>
+</section>
+
+<section class="panel settings-panel">
+  <div class="panel-header"><div><h2>Настройки контроля</h2><p>Лимит действует суммарно для всех баз компании.</p></div></div>
+  <form class="settings-form" action="/companies/{{ company.id }}/control" method="post">
+    <div class="form-row"><label for="limit">Общий лимит</label><div class="field-with-hint"><input id="limit" type="number" name="session_limit" min="0" max="1000000" value="{{ company.session_limit }}" required><small>0 — только мониторинг без ограничения</small></div></div>
+    <div class="form-row"><span>Контроль</span><label class="switch-line"><span class="switch"><input type="checkbox" name="enforcement_enabled"{% if company.enforcement_enabled %} checked{% endif %}><i></i></span><span><strong>Завершать лишние пользовательские сеансы</strong><small>При выключении приложение только отображает использование.</small></span></label></div>
+    <div class="form-row top"><label for="excluded">Исключённые пользователи</label><div class="field-with-hint"><textarea id="excluded" name="excluded_users" placeholder="По одному имени в строке">{{ company.excluded_users|join('\n') }}</textarea><small>Эти пользователи не учитываются и никогда не завершаются автоматически.</small></div></div>
+    <div class="form-actions"><button class="button primary" type="submit">Сохранить изменения</button><span class="form-message" data-control-status>{% if company.control_status.message %}{{ company.control_status.message }}{% endif %}</span></div>
+  </form>
+</section>
+{% endblock %}
+{% block dialogs %}
+<dialog id="assign-bases" class="modal large"><form action="/companies/{{ company.id }}/bases" method="post"><div class="modal-header"><div><h2>Добавление информационных баз</h2><p>Выберите несколько баз. Уже назначенные другой компании базы недоступны.</p></div><button class="icon-button close-button" type="button" data-close-dialog>×</button></div><div class="modal-tools"><label class="search-box grow">{{ icon('search') }}<input type="search" placeholder="Поиск базы…" data-table-search="base-picker"></label></div><div class="modal-body table-modal"><div class="table-scroll"><table id="base-picker" class="admin-table"><thead><tr><th class="check-col"></th><th>Название</th><th>Сервер</th><th>Текущая компания</th></tr></thead><tbody>
+{% for base in available_bases %}{% set assigned_here = base.key in company.assigned_keys %}{% set assigned_elsewhere = base.company_name and not assigned_here %}<tr data-search-text="{{ (base.infobase_name ~ ' ' ~ base.server_name ~ ' ' ~ base.company_name)|lower }}" class="{% if assigned_elsewhere %}disabled-row{% endif %}"><td><input type="checkbox" name="base" value="{{ base.key }}"{% if assigned_here %} checked{% endif %}{% if assigned_elsewhere %} disabled{% endif %}></td><td><strong title="{{ base.infobase_name }}">{{ base.infobase_name }}</strong></td><td>{{ base.server_name }}</td><td>{% if assigned_here %}<span class="badge info">Текущая компания</span>{% elif assigned_elsewhere %}{{ base.company_name }}{% else %}<span class="muted">Не назначена</span>{% endif %}</td></tr>{% endfor %}
+</tbody></table></div></div><div class="modal-footer"><button class="button secondary" type="button" data-close-dialog>Отмена</button><button class="button primary" type="submit">Добавить выбранные</button></div></form></dialog>
+<dialog id="delete-company" class="modal small"><form action="/companies/{{ company.id }}/delete" method="post"><div class="modal-header"><div><h2>Удалить компанию?</h2><p>Привязки баз и настройки лимита будут удалены.</p></div><button class="icon-button close-button" type="button" data-close-dialog>×</button></div><div class="modal-body"><div class="alert danger"><span class="alert-icon">!</span><span>Сеансы 1С завершены не будут.</span></div></div><div class="modal-footer"><button class="button secondary" type="button" data-close-dialog>Отмена</button><button class="button danger" type="submit">Удалить компанию</button></div></form></dialog>
+{% endblock %}

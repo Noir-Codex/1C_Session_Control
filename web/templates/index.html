@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Контроль сеансов 1С</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem; color: #172033; background: #f5f7fb; }
+    h1, h2, h3 { margin-bottom: .5rem; }
+    .page-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+    .page-header h1 { margin-top: 0; }
+    .logout { display: flex; align-items: center; gap: .75rem; color: #526075; }
+    button { padding: .5rem .8rem; border: 1px solid #cbd3df; border-radius: .45rem; background: white; cursor: pointer; }
+    .notice, .error { padding: .8rem 1rem; border-radius: .5rem; margin-bottom: 1rem; }
+    .notice { background: #e8f1ff; } .error { background: #ffe8e8; color: #8c1d1d; }
+    section { background: white; padding: 1rem 1.25rem; margin: 1rem 0; border-radius: .7rem; box-shadow: 0 1px 4px #0001; }
+    table { width: 100%; border-collapse: collapse; margin-top: .75rem; }
+    th, td { padding: .55rem; border-bottom: 1px solid #e5e9f0; text-align: left; }
+    th { color: #526075; }
+    code { font-size: .85em; }
+  </style>
+</head>
+<body>
+  <div class="page-header">
+    <h1>Контроль сеансов 1С</h1>
+    <form class="logout" action="/logout" method="post">
+      <span>{{ cluster_user }}</span>
+      <button type="submit">Выйти</button>
+    </form>
+  </div>
+  <div class="notice">Режим MONITOR_ONLY: приложение ничего не изменяет на серверах 1С.</div>
+
+  {% for error in errors %}
+  <div class="error"><strong>{{ error.server }}</strong> ({{ error.endpoint }}): {{ error.error }}</div>
+  {% endfor %}
+
+  {% for server in servers %}
+  <section>
+    <h2>{{ server.server_name }}</h2>
+    <div>RAS: <code>{{ server.endpoint }}</code></div>
+    {% for item in server.clusters %}
+      <h3>{{ item.cluster.name or 'Кластер без имени' }}</h3>
+      <div><code>{{ item.cluster.id }}</code> · Баз: {{ item.infobases|length }} · Сеансов: {{ item.sessions|length }}</div>
+      <table>
+        <thead><tr><th>Пользователь</th><th>База</th><th>Компьютер</th><th>Приложение</th><th>Начало</th><th>ID</th></tr></thead>
+        <tbody>
+        {% for session in item.sessions %}
+          <tr>
+            <td>{{ session.user_name or '—' }}</td><td>{{ session.infobase_name or session.infobase_id or '—' }}</td>
+            <td>{{ session.host or '—' }}</td><td>{{ session.app_id or '—' }}</td>
+            <td>{{ session.started_at or '—' }}</td><td><code>{{ session.id or '—' }}</code></td>
+          </tr>
+        {% else %}
+          <tr><td colspan="6">Активных сеансов нет</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    {% endfor %}
+  </section>
+  {% else %}
+  <p>Нет доступных RAS-серверов.</p>
+  {% endfor %}
+</body>
+</html>

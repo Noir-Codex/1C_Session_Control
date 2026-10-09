@@ -1,0 +1,8 @@
+{% extends "admin_base.html" %}
+{% block content %}
+<div class="settings-grid">
+  <section class="panel settings-summary"><div class="section-header"><div><h2>Подключение RAC</h2><p>Параметры читаются из config.toml.</p></div></div><dl class="definition-list"><div><dt>Исполняемый файл</dt><dd><code title="{{ rac_path }}">{{ rac_path }}</code></dd></div><div><dt>Тайм-аут команды</dt><dd>{{ command_timeout }} секунд</dd></div><div><dt>Файл журнала</dt><dd><code>{{ log_file }}</code></dd></div></dl></section>
+  <section class="panel settings-summary"><div class="section-header"><div><h2>Обновление данных</h2><p>Текущие параметры фонового мониторинга.</p></div></div><dl class="definition-list"><div><dt>Интервал интерфейса</dt><dd>2 секунды</dd></div><div><dt>Топология серверов</dt><dd>60 секунд</dd></div><div><dt>Источник данных</dt><dd>Фоновый кэш RAC</dd></div></dl></section>
+</div>
+<section class="panel help-panel"><div class="help-icon">{{ icon('info') }}</div><div><h2>Изменение настроек</h2><p>Чтобы изменить путь RAC, сервер RAS или тайм-аут, отредактируйте <code>config.toml</code> и перезапустите приложение через <code>start.bat</code>. Пароль администратора в файле не сохраняется.</p></div></section>
+{% endblock %}

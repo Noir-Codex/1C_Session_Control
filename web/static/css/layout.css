@@ -1,0 +1,52 @@
+.sidebar { position: fixed; inset: 0 auto 0 0; z-index: 30; display: flex; width: var(--sidebar-width); min-width: var(--sidebar-width); height: 100vh; flex-direction: column; border-right: 1px solid var(--border-soft); background: var(--bg-sidebar); }
+.sidebar-brand { display: flex; height: 72px; align-items: center; gap: 12px; padding: 0 20px; border-bottom: 1px solid var(--border-soft); }
+.brand-mark { display: grid; width: 36px; height: 36px; place-items: center; border-radius: var(--radius); color: white; background: var(--accent-active); font-size: 13px; font-weight: 700; }
+.sidebar-brand > span:last-child { display: flex; min-width: 0; flex-direction: column; }
+.sidebar-brand strong { font-size: 14px; font-weight: 600; }
+.sidebar-brand small { color: var(--text-muted); }
+.sidebar-nav { flex: 1; padding: 16px 12px; overflow-y: auto; }
+.nav-group + .nav-group { margin-top: 20px; }
+.nav-label { margin: 0 12px 6px; color: var(--text-muted); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+.sidebar-nav a { position: relative; display: flex; height: 40px; align-items: center; gap: 10px; padding: 0 12px; border-radius: var(--radius); color: var(--text-secondary); transition: color 140ms ease, background 140ms ease; }
+.sidebar-nav a:hover { color: var(--text-primary); background: var(--bg-panel-hover); }
+.sidebar-nav a.active { color: var(--text-primary); background: rgba(47,129,247,.12); }
+.sidebar-nav a.active::before { position: absolute; inset: 8px auto 8px 0; width: 3px; border-radius: 2px; content: ""; background: var(--accent); }
+.sidebar-footer { padding: 12px; border-top: 1px solid var(--border-soft); }
+.ras-compact, .admin-compact { display: flex; min-width: 0; align-items: center; gap: 10px; padding: 8px; }
+.ras-compact > span:last-child, .admin-compact > span:nth-child(2) { display: flex; min-width: 0; flex: 1; flex-direction: column; }
+.ras-compact strong, .admin-compact strong { overflow: hidden; font-size: 13px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.ras-compact small, .admin-compact small { color: var(--text-muted); }
+.admin-compact { margin-top: 4px; border-top: 1px solid var(--border-soft); padding-top: 12px; }
+.admin-avatar { display: grid; width: 28px; height: 28px; flex: 0 0 auto; place-items: center; border-radius: 50%; color: white; background: #30363d; font-size: 12px; font-weight: 600; }
+.admin-compact form { margin-left: auto; }
+.main-content { width: calc(100% - var(--sidebar-width)); min-height: 100vh; margin-left: var(--sidebar-width); }
+.page-header { display: flex; min-height: 72px; align-items: center; gap: 16px; padding: 12px 32px; border-bottom: 1px solid var(--border-soft); background: rgba(13,17,23,.92); }
+.page-heading { min-width: 0; flex: 1; }
+.page-heading p { margin-top: 2px; overflow: hidden; color: var(--text-secondary); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.header-actions { display: flex; align-items: center; gap: 8px; }
+.header-status { display: flex; min-width: 176px; align-items: center; gap: 8px; padding-right: 8px; }
+.header-status > span:last-child { display: flex; flex-direction: column; }
+.header-status strong { font-size: 13px; font-weight: 500; }
+.header-status small { color: var(--text-muted); }
+.sidebar-toggle { display: none !important; }
+.page-body { width: 100%; max-width: 1600px; padding: 24px 32px 40px; }
+.sidebar-backdrop { display: none; }
+@media (max-width: 1439px) { .page-header, .page-body { padding-right: 24px; padding-left: 24px; } }
+@media (max-width: 1199px) { :root { --sidebar-width: 210px; } }
+@media (max-width: 991px) {
+  :root { --sidebar-width: 240px; }
+  .sidebar { transform: translateX(-100%); transition: transform 150ms ease; }
+  body.sidebar-open .sidebar { transform: translateX(0); }
+  .main-content { width: 100%; margin-left: 0; }
+  .sidebar-toggle { display: inline-flex !important; }
+  .sidebar-backdrop { position: fixed; inset: 0; z-index: 20; background: rgba(0,0,0,.45); }
+  body.sidebar-open .sidebar-backdrop { display: block; }
+}
+@media (max-width: 700px) {
+  .page-header { align-items: flex-start; flex-wrap: wrap; }
+  .page-heading { order: 1; }
+  .header-actions { width: 100%; order: 2; }
+  .header-status { margin-right: auto; }
+  .header-actions .button span { display: none; }
+  .page-body { padding: 16px; }
+}

@@ -1,0 +1,72 @@
+{% macro icon(name) -%}
+<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+  {% if name == 'overview' %}<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+  {% elif name == 'sessions' %}<circle cx="9" cy="8" r="4"/><path d="M3 21v-2a6 6 0 0 1 12 0v2M16 5a4 4 0 0 1 0 7M19 21v-2a6 6 0 0 0-3-5.2"/>
+  {% elif name == 'database' %}<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v7c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12v7c0 1.7 3.6 3 8 3s8-1.3 8-3v-7"/>
+  {% elif name == 'companies' %}<path d="M3 21V7l9-4v18M12 9h9v12M7 10h1M7 14h1M7 18h1M16 13h1M16 17h1"/>
+  {% elif name == 'server' %}<rect x="3" y="4" width="18" height="6" rx="1"/><rect x="3" y="14" width="18" height="6" rx="1"/><path d="M7 7h.01M7 17h.01"/>
+  {% elif name == 'logs' %}<path d="M6 3h12v18H6zM9 7h6M9 11h6M9 15h4"/>
+  {% elif name == 'settings' %}<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/>
+  {% elif name == 'refresh' %}<path d="M20 11a8 8 0 1 0 2 5M20 4v7h-7"/>
+  {% elif name == 'plus' %}<path d="M12 5v14M5 12h14"/>
+  {% elif name == 'search' %}<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>
+  {% elif name == 'logout' %}<path d="M10 17l5-5-5-5M15 12H3M15 3h6v18h-6"/>
+  {% elif name == 'chevron' %}<path d="m9 18 6-6-6-6"/>
+  {% elif name == 'arrow-left' %}<path d="m15 18-6-6 6-6M9 12h12"/>
+  {% elif name == 'trash' %}<path d="M4 7h16M9 7V4h6v3M7 7l1 14h8l1-14M10 11v6M14 11v6"/>
+  {% elif name == 'info' %}<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/>
+  {% endif %}
+</svg>
+{%- endmacro %}
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ page_title }} — 1C Session Control</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/css/variables.css?v=5">
+  <link rel="stylesheet" href="/static/css/base.css?v=5">
+  <link rel="stylesheet" href="/static/css/layout.css?v=5">
+  <link rel="stylesheet" href="/static/css/components.css?v=5">
+  <link rel="stylesheet" href="/static/css/forms.css?v=5">
+  <link rel="stylesheet" href="/static/css/tables.css?v=5">
+  <link rel="stylesheet" href="/static/css/pages.css?v=5">
+  <script src="/static/js/app.js?v=5" defer></script>
+</head>
+<body data-page="{{ active_page }}" data-initial-bases="{{ available_bases|length }}"{% block body_data %}{% endblock %}>
+  <aside class="sidebar" id="sidebar">
+    <a class="sidebar-brand" href="/"><span class="brand-mark">1C</span><span><strong>Session Control</strong><small>Панель администратора</small></span></a>
+    <nav class="sidebar-nav" aria-label="Основная навигация">
+      <div class="nav-group"><div class="nav-label">Обзор</div><a href="/"{% if active_page == 'overview' %} class="active" aria-current="page"{% endif %}>{{ icon('overview') }}<span>Обзор</span></a></div>
+      <div class="nav-group"><div class="nav-label">Мониторинг</div><a href="/sessions"{% if active_page == 'sessions' %} class="active" aria-current="page"{% endif %}>{{ icon('sessions') }}<span>Сеансы</span></a><a href="/infobases"{% if active_page == 'infobases' %} class="active" aria-current="page"{% endif %}>{{ icon('database') }}<span>Информационные базы</span></a></div>
+      <div class="nav-group"><div class="nav-label">Управление</div><a href="/companies"{% if active_page == 'companies' %} class="active" aria-current="page"{% endif %}>{{ icon('companies') }}<span>Компании</span></a><a href="/servers"{% if active_page == 'servers' %} class="active" aria-current="page"{% endif %}>{{ icon('server') }}<span>Серверы 1С</span></a></div>
+      <div class="nav-group"><div class="nav-label">Система</div><a href="/logs"{% if active_page == 'logs' %} class="active" aria-current="page"{% endif %}>{{ icon('logs') }}<span>Журнал</span></a><a href="/settings"{% if active_page == 'settings' %} class="active" aria-current="page"{% endif %}>{{ icon('settings') }}<span>Настройки</span></a></div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="ras-compact"><span class="status-dot {% if last_updated and not errors %}success{% elif errors %}danger{% else %}loading{% endif %}" data-ras-dot></span><span><strong data-ras-label>{% if last_updated and not errors %}RAS подключен{% elif errors %}Ошибка RAS{% else %}Подключение…{% endif %}</strong><small>{{ server_views[0].endpoint if server_views else 'нет данных' }}</small></span></div>
+      <div class="admin-compact"><span class="admin-avatar">{{ cluster_user[:1]|upper }}</span><span><strong title="{{ cluster_user }}">{{ cluster_user }}</strong><small>Администратор</small></span><form action="/logout" method="post"><button class="icon-button" type="submit" title="Выйти">{{ icon('logout') }}</button></form></div>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header class="page-header">
+      <button class="sidebar-toggle icon-button" type="button" data-sidebar-toggle aria-label="Открыть меню">{{ icon('overview') }}</button>
+      <div class="page-heading"><h1>{{ page_title }}</h1><p>{{ page_description }}</p></div>
+      <div class="header-actions">
+        <div class="header-status"><span class="status-dot {% if last_updated and not errors %}success{% elif errors %}danger{% else %}loading{% endif %}" data-ras-dot></span><span><strong data-ras-label>{% if last_updated and not errors %}RAS подключен{% elif errors %}Есть ошибки RAS{% else %}Получение данных{% endif %}</strong><small data-last-updated>{% if last_updated %}Обновлено недавно{% else %}Ожидание первого ответа{% endif %}</small></span></div>
+        <button class="button secondary" type="button" data-refresh-button>{{ icon('refresh') }}<span>Обновить</span></button>
+        {% block page_actions %}{% endblock %}
+      </div>
+    </header>
+
+    {% if message %}<div class="alert success" role="status"><span class="alert-icon">✓</span><span>{{ message }}</span></div>{% endif %}
+    {% if page_error %}<div class="alert danger" role="alert"><span class="alert-icon">!</span><span>{{ page_error }}</span></div>{% endif %}
+    {% for error in errors %}<div class="alert danger"><span class="alert-icon">!</span><span><strong>Не удалось получить данные RAS</strong><small>{{ error.endpoint }} — {{ error.error }}</small></span><button class="button secondary compact" type="button" data-refresh-button>Повторить</button></div>{% endfor %}
+
+    <div class="page-body">{% block content %}{% endblock %}</div>
+  </main>
+  <div class="sidebar-backdrop" data-sidebar-backdrop></div>
+  {% block dialogs %}{% endblock %}
+</body>
+</html>

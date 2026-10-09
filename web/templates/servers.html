@@ -1,0 +1,7 @@
+{% extends "admin_base.html" %}
+{% block content %}
+<section class="panel table-panel"><div class="panel-header"><div><h2>Подключённые RAS-серверы</h2><p>Состояние последнего фонового опроса.</p></div></div><div class="table-scroll"><table class="admin-table"><thead><tr><th>RAS сервер</th><th>Статус</th><th>Адрес</th><th class="number">Порт</th><th class="number">Кластеры</th><th class="number">Базы</th><th class="number">Все сеансы</th><th>Последнее обновление</th></tr></thead><tbody>
+{% for server in server_views %}{% set endpoint = server.endpoint.split(':') %}<tr><td><span class="resource-name">{{ icon('server') }}<strong>{{ server.name }}</strong></span></td><td><span class="badge {{ 'success' if server.online else 'danger' }}"><span class="status-dot {{ 'success' if server.online else 'danger' }}"></span>{{ 'Подключен' if server.online else 'Недоступен' }}</span></td><td><code>{{ endpoint[0] }}</code></td><td class="number">{{ endpoint[-1] }}</td><td class="number">{{ server.cluster_count }}</td><td class="number">{{ server.base_count }}</td><td class="number">{{ server.session_count }}</td><td data-server-updated>{% if last_updated %}{{ last_updated }}{% else %}—{% endif %}</td></tr>{% endfor %}
+</tbody></table></div></section>
+<section class="panel help-panel"><div class="help-icon">{{ icon('info') }}</div><div><h2>Фоновый мониторинг</h2><p>Веб-интерфейс читает готовый снимок из памяти. Команды RAC выполняются в фоновом потоке и не задерживают открытие страниц.</p></div></section>
+{% endblock %}

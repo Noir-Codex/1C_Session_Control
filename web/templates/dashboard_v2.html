@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Контроль сеансов 1С</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <style>
+    :root { color-scheme: light; font-family: Inter, "Segoe UI", Arial, sans-serif; color: #10203b; background: #f3f6fb; }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    body { margin: 0; padding: 28px; }
+    .page { max-width: 1500px; margin: 0 auto; }
+    h1, h2, h3 { margin: 0; }
+    h1 { font-size: 2rem; }
+    h2 { font-size: 1.25rem; }
+    h3 { margin-top: 1.4rem; font-size: 1rem; }
+    .page-header, .section-header, .company-header, .toolbar, .inline-form, .control-form, .live { display: flex; align-items: center; gap: .75rem; }
+    .page-header, .section-header, .company-header { justify-content: space-between; }
+    .logout { display: flex; align-items: center; gap: .75rem; }
+    section, .notice, .success, .error { border-radius: 12px; margin-top: 16px; }
+    section { padding: 20px; background: #fff; box-shadow: 0 1px 4px #12213b12; }
+    .notice { padding: 14px 16px; background: #e7f0ff; color: #173b72; }
+    .success { padding: 12px 16px; background: #e8f7ee; color: #176b38; }
+    .error { padding: 12px 16px; background: #fff0f0; color: #9d2525; }
+    .summary { display: flex; gap: 36px; }
+    .summary-item { display: flex; flex-direction: column; }
+    .summary-value { font-size: 1.75rem; font-weight: 700; }
+    .muted { color: #71809a; font-size: .9rem; }
+    .company { border-left: 4px solid #2b68f0; }
+    .company-meta { margin-top: .45rem; color: #6d7b92; }
+    .toolbar { flex-wrap: wrap; margin-top: 1rem; }
+    .control-form { flex: 1; display: grid; grid-template-columns: auto auto minmax(260px, 1fr) auto; align-items: end; padding: 12px; border: 1px solid #dfe6f1; border-radius: 9px; background: #f8faff; }
+    .control-form > label:not(.switch) { display: flex; flex-direction: column; gap: .35rem; }
+    label.switch { display: flex; align-items: center; align-self: center; gap: .4rem; white-space: nowrap; }
+    input, textarea, button { font: inherit; }
+    input[type="text"], input[type="number"], textarea { border: 1px solid #cfd8e7; border-radius: 7px; padding: .62rem .75rem; background: white; }
+    input[type="text"] { width: 260px; }
+    input[type="number"] { width: 105px; }
+    textarea { width: 100%; min-width: 260px; height: 42px; min-height: 42px; resize: vertical; }
+    button { border: 1px solid #ccd6e6; border-radius: 7px; padding: .62rem .85rem; background: white; cursor: pointer; }
+    button:hover { background: #f2f5fa; }
+    button.primary { color: white; border-color: #245bd7; background: #245bd7; }
+    button.danger { color: #b42d2d; }
+    .badge { display: inline-block; margin: 2px; padding: .2rem .5rem; border-radius: 999px; background: #edf2f8; font-size: .82rem; }
+    .badge.good { background: #def5e7; color: #166534; }
+    .badge.warning { background: #fff0cd; color: #8a5a00; }
+    .badge.off { background: #edf0f4; color: #667085; }
+    .live { margin-left: auto; color: #65748c; font-size: .9rem; }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: #f0a000; }
+    .dot.ok { background: #21a45b; }
+    .dot.error { background: #d33; }
+    .table-wrap { overflow-x: auto; margin-top: .75rem; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: .7rem .55rem; border-bottom: 1px solid #e2e7ef; text-align: left; white-space: nowrap; }
+    th { color: #54637a; font-size: .9rem; }
+    code { font-size: .8rem; }
+    dialog { width: min(92vw, 72rem); max-height: 86vh; padding: 0; border: 0; border-radius: 12px; box-shadow: 0 20px 70px #0005; }
+    dialog::backdrop { background: #17203380; }
+    .dialog-header, .dialog-actions { position: sticky; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.25rem; background: white; z-index: 1; }
+    .dialog-header { top: 0; border-bottom: 1px solid #e5e9f0; }
+    .dialog-actions { bottom: 0; justify-content: flex-end; border-top: 1px solid #e5e9f0; }
+    .dialog-body { padding: 1.25rem; overflow-y: auto; }
+    .base-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(255px, 1fr)); gap: 10px; }
+    .base-option { display: flex; gap: .7rem; padding: .8rem; border: 1px solid #dfe5ee; border-radius: 8px; }
+    .base-option small { display: block; margin-top: .3rem; color: #7a879a; }
+    @media (max-width: 760px) {
+      body { padding: 14px; }
+      .page-header, .section-header, .company-header { align-items: stretch; flex-direction: column; }
+      .live { margin-left: 0; }
+      input[type="text"], textarea { width: 100%; min-width: 0; }
+      .control-form { grid-template-columns: 1fr; align-items: stretch; }
+      label.switch { align-self: auto; }
+    }
+  </style>
+  <link rel="stylesheet" href="/static/app.css?v=3">
+</head>
+<body class="dashboard-page">
+<main class="page">
+  <div class="page-header">
+    <div class="brand-block">
+      <div class="eyebrow">RAS CONTROL CENTER</div>
+      <h1>Контроль сеансов 1С</h1>
+    </div>
+    <div class="logout">
+      <div class="live"><span id="live-dot" class="dot{% if last_updated %} ok{% endif %}"></span><span id="live-text">{% if last_updated %}Данные получены{% else %}Первичная загрузка…{% endif %}</span></div>
+      <span>{{ cluster_user }}</span>
+      <form action="/logout" method="post"><button type="submit">Выйти</button></form>
+    </div>
+  </div>
+
+  <div class="notice">Учитываются и ограничиваются только интерактивные пользовательские сеансы 1С. Фоновые задания, сервисы, конфигуратор и администраторы в лимит не входят.</div>
+  {% if message %}<div class="success" role="status">{{ message }}</div>{% endif %}
+  {% if page_error %}<div class="error" role="alert">{{ page_error }}</div>{% endif %}
+  {% for error in errors %}<div class="error"><strong>{{ error.server }}</strong>: {{ error.error }}</div>{% endfor %}
+
+  <section>
+    <div class="summary">
+      <div class="summary-item"><span id="base-count" class="summary-value">{{ available_bases|length }}</span><span class="muted">обнаружено баз</span></div>
+      <div class="summary-item"><span class="summary-value">{{ companies|length }}</span><span class="muted">компаний</span></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-header">
+      <div><h2>Компании</h2><div class="muted">Создайте компанию, привяжите базы и задайте общий лимит пользовательских сеансов.</div></div>
+      <form class="inline-form" action="/companies" method="post">
+        <input type="text" name="name" placeholder="Название компании" maxlength="120" required>
+        <button class="primary" type="submit">Создать</button>
+      </form>
+    </div>
+  </section>
+
+  {% for company in companies %}
+  <section class="company" data-company-id="{{ company.id }}">
+    <div class="company-header">
+      <div>
+        <h2>{{ company.name }}</h2>
+        <div class="company-meta">
+          Баз: {{ company.bases|length }} · Пользовательских сеансов: <span data-role="user-count">{{ company.user_session_count }}</span> ·
+          технических пропущено: <span data-role="ignored-count">{{ company.ignored_session_count }}</span> ·
+          {% if company.session_limit > 0 %}лимит: {{ company.session_limit }} · осталось: <span data-role="remaining">{{ company.remaining_sessions }}</span>{% else %}лимит не задан{% endif %}
+        </div>
+        <div class="company-meta">Назначено:
+          {% for base in company.bases %}<span class="badge">{{ base.infobase_name }}</span>{% else %}ни одной базы{% endfor %}
+        </div>
+      </div>
+      <form action="/companies/{{ company.id }}/delete" method="post" onsubmit="return confirm('Удалить компанию и её привязки?')">
+        <button class="danger" type="submit">Удалить</button>
+      </form>
+    </div>
+
+    <div class="toolbar">
+      <button class="bases-button" type="button" onclick="document.getElementById('bases-{{ company.id }}').showModal()">Базы</button>
+      <form class="control-form" action="/companies/{{ company.id }}/control" method="post">
+        <label><strong>Лимит</strong><input type="number" name="session_limit" min="0" max="1000000" value="{{ company.session_limit }}" required></label>
+        <label class="switch"><input type="checkbox" name="enforcement_enabled"{% if company.enforcement_enabled %} checked{% endif %}> Завершать лишние</label>
+        <label>Не учитывать пользователей<textarea name="excluded_users" placeholder="По одному имени в строке">{{ company.excluded_users|join('\n') }}</textarea></label>
+        <button class="primary" type="submit">Сохранить контроль</button>
+      </form>
+      <span data-role="control-badge" class="badge {% if company.enforcement_enabled and company.session_limit > 0 %}good{% else %}off{% endif %}">
+        {% if company.enforcement_enabled and company.session_limit > 0 %}Контроль включён{% else %}Контроль выключен{% endif %}
+      </span>
+      <span data-role="over-limit" class="badge warning"{% if not company.over_limit %} hidden{% endif %}>Лимит превышен</span>
+    </div>
+    <div class="muted" data-role="control-status">{% if company.control_status.message %}{{ company.control_status.message }}{% endif %}</div>
+
+    <dialog id="bases-{{ company.id }}">
+      <form action="/companies/{{ company.id }}/bases" method="post">
+        <div class="dialog-header"><div><h2>Базы — {{ company.name }}</h2><div class="muted">Отметьте базы и сохраните изменения.</div></div><button type="button" onclick="this.closest('dialog').close()">Закрыть</button></div>
+        <div class="dialog-body"><div class="base-grid">
+          {% for base in available_bases %}
+            {% set assigned_here = base.key in company.assigned_keys %}
+            {% set assigned_elsewhere = base.company_name and not assigned_here %}
+            <label class="base-option" data-base-key="{{ base.key }}">
+              <input type="checkbox" name="base" value="{{ base.key }}"{% if assigned_here %} checked{% endif %}{% if assigned_elsewhere %} disabled{% endif %}>
+              <span><strong>{{ base.infobase_name }}</strong><small>{{ base.cluster_name }} · всего сеансов: <span data-role="base-count">{{ base.session_count }}</span>{% if assigned_elsewhere %} · назначена: {{ base.company_name }}{% endif %}</small></span>
+            </label>
+          {% else %}<div class="muted">Список баз загружается из RAS…</div>{% endfor %}
+        </div></div>
+        <div class="dialog-actions"><button type="button" onclick="this.closest('dialog').close()">Отмена</button><button class="primary" type="submit">Сохранить привязки</button></div>
+      </form>
+    </dialog>
+
+    <h3>Пользовательские сеансы по базам компании</h3>
+    <div class="muted">Таблица обновляется автоматически. Технические и административные сеансы здесь не показываются и не ограничиваются.</div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Пользователь</th><th>База</th><th>Компьютер</th><th>Приложение</th><th>Начало</th><th>ID</th></tr></thead>
+      <tbody data-role="sessions">
+      {% for session in company.sessions %}
+        <tr><td>{{ session.user_name or '—' }}</td><td>{{ session.infobase_name or session.infobase_id or '—' }}</td><td>{{ session.host or '—' }}</td><td>{{ session.app_id or '—' }}</td><td>{{ session.started_at or '—' }}</td><td><code>{{ session.id or '—' }}</code></td></tr>
+      {% else %}<tr><td colspan="6">Активных пользовательских сеансов нет.</td></tr>{% endfor %}
+      </tbody>
+    </table></div>
+  </section>
+  {% else %}<section><p class="muted">Компаний пока нет. Создайте первую компанию выше.</p></section>{% endfor %}
+</main>
+
+<script>
+(() => {
+  let initialBaseCount = {{ available_bases|length }};
+  const text = (value) => value === null || value === undefined || value === '' ? '—' : String(value);
+  const cell = (value, code = false) => {
+    const td = document.createElement('td');
+    const node = code ? document.createElement('code') : td;
+    node.textContent = text(value);
+    if (code) td.appendChild(node);
+    return td;
+  };
+  const renderSessions = (tbody, sessions) => {
+    tbody.replaceChildren();
+    if (!sessions.length) {
+      const row = document.createElement('tr');
+      const td = document.createElement('td'); td.colSpan = 6; td.textContent = 'Активных пользовательских сеансов нет.';
+      row.appendChild(td); tbody.appendChild(row); return;
+    }
+    for (const session of sessions) {
+      const row = document.createElement('tr');
+      row.append(cell(session.user_name), cell(session.infobase_name || session.infobase_id), cell(session.host), cell(session.app_id), cell(session.started_at), cell(session.id, true));
+      tbody.appendChild(row);
+    }
+  };
+  async function refresh() {
+    const dot = document.getElementById('live-dot');
+    const label = document.getElementById('live-text');
+    try {
+      const response = await fetch('/api/dashboard', {cache: 'no-store'});
+      if (response.status === 401) { location.reload(); return; }
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      const baseCount = data.available_bases.length;
+      document.getElementById('base-count').textContent = baseCount;
+      if (baseCount !== initialBaseCount) { location.reload(); return; }
+      for (const base of data.available_bases) {
+        document.querySelectorAll(`[data-base-key="${CSS.escape(base.key)}"] [data-role="base-count"]`).forEach(node => node.textContent = base.session_count);
+      }
+      for (const company of data.companies) {
+        const root = document.querySelector(`[data-company-id="${company.id}"]`);
+        if (!root) continue;
+        root.querySelector('[data-role="user-count"]').textContent = company.user_session_count;
+        root.querySelector('[data-role="ignored-count"]').textContent = company.ignored_session_count;
+        const remaining = root.querySelector('[data-role="remaining"]');
+        if (remaining) remaining.textContent = company.remaining_sessions ?? '—';
+        root.querySelector('[data-role="over-limit"]').hidden = !company.over_limit;
+        const status = root.querySelector('[data-role="control-status"]');
+        status.textContent = company.control_status?.error || company.control_status?.message || '';
+        renderSessions(root.querySelector('[data-role="sessions"]'), company.sessions);
+      }
+      dot.className = 'dot ok';
+      label.textContent = data.last_updated ? `Обновлено ${new Date(data.last_updated).toLocaleTimeString()}` : 'Получение данных…';
+    } catch (error) {
+      dot.className = 'dot error'; label.textContent = 'Нет связи с веб-сервисом';
+    }
+  }
+  refresh();
+  setInterval(refresh, 2000);
+})();
+</script>
+</body>
+</html>

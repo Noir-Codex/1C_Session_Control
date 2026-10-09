@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Контроль сеансов 1С</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/dashboard.css?v=4">
+</head>
+<body class="dashboard-v3">
+<div class="app-shell">
+  <aside class="sidebar">
+    <a class="brand" href="#overview" aria-label="Контроль сеансов 1С">
+      <img src="/static/favicon.svg" alt="">
+      <span><strong>Session Control</strong><small>1С · RAS</small></span>
+    </a>
+
+    <nav class="side-nav" aria-label="Основная навигация">
+      <a class="active" href="#overview"><span class="nav-icon">⌂</span><span>Обзор</span></a>
+      <a href="#companies"><span class="nav-icon">▦</span><span>Компании</span></a>
+      <a href="#sessions"><span class="nav-icon">◎</span><span>Сеансы</span></a>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <div class="server-state">
+        <span id="sidebar-dot" class="state-dot{% if last_updated %} online{% endif %}"></span>
+        <span><strong>RAS мониторинг</strong><small id="sidebar-state">{% if last_updated %}Подключено{% else %}Подключение…{% endif %}</small></span>
+      </div>
+      <div class="profile">
+        <div class="avatar">{{ cluster_user[:1]|upper }}</div>
+        <div class="profile-text"><strong>{{ cluster_user }}</strong><small>Администратор</small></div>
+        <form action="/logout" method="post"><button class="icon-button" type="submit" title="Выйти" aria-label="Выйти">↗</button></form>
+      </div>
+    </div>
+  </aside>
+
+  <main class="workspace">
+    <header class="topbar" id="overview">
+      <div>
+        <div class="eyebrow">ПАНЕЛЬ УПРАВЛЕНИЯ</div>
+        <h1>Контроль сеансов</h1>
+        <p>Лимиты пользовательских подключений к информационным базам 1С</p>
+      </div>
+      <div class="live-status">
+        <span id="live-dot" class="state-dot{% if last_updated %} online{% endif %}"></span>
+        <span><strong id="live-title">{% if last_updated %}Данные актуальны{% else %}Получение данных{% endif %}</strong><small id="live-text">Автоматическое обновление</small></span>
+      </div>
+    </header>
+
+    {% if message %}<div class="flash success" role="status"><span>✓</span>{{ message }}</div>{% endif %}
+    {% if page_error %}<div class="flash error" role="alert"><span>!</span>{{ page_error }}</div>{% endif %}
+    {% for error in errors %}<div class="flash error"><span>!</span><strong>{{ error.server }}</strong>: {{ error.error }}</div>{% endfor %}
+
+    <section class="metric-grid" aria-label="Общая статистика">
+      <article class="metric-card violet">
+        <div class="metric-head"><span>Информационные базы</span><span class="metric-icon">▦</span></div>
+        <strong id="base-count">{{ available_bases|length }}</strong>
+        <small>обнаружено через RAS</small>
+      </article>
+      <article class="metric-card cyan">
+        <div class="metric-head"><span>Пользовательские сеансы</span><span class="metric-icon">◎</span></div>
+        <strong id="total-user-sessions">{{ total_user_sessions }}</strong>
+        <small>учитываются в лимитах</small>
+      </article>
+      <article class="metric-card blue">
+        <div class="metric-head"><span>Компании</span><span class="metric-icon">◇</span></div>
+        <strong>{{ companies|length }}</strong>
+        <small>настроено в системе</small>
+      </article>
+      <article class="metric-card green">
+        <div class="metric-head"><span>Активный контроль</span><span class="metric-icon">✓</span></div>
+        <strong>{{ active_controls }}</strong>
+        <small>компаний защищено лимитом</small>
+      </article>
+    </section>
+
+    <section class="info-strip">
+      <div class="info-icon">i</div>
+      <div><strong>Безопасный выборочный контроль</strong><p>В лимит входят только интерактивные пользователи. Администраторы, фоновые задания, сервисы и конфигуратор автоматически пропускаются.</p></div>
+    </section>
+
+    <section class="companies-heading" id="companies">
+      <div><div class="eyebrow">СТРУКТУРА ДОСТУПА</div><h2>Компании</h2><p>Привязывайте базы и управляйте общим числом пользовательских сеансов.</p></div>
+      <form class="create-company" action="/companies" method="post">
+        <label for="company-name">Новая компания</label>
+        <div><input id="company-name" type="text" name="name" placeholder="Введите название" maxlength="120" required><button class="primary" type="submit"><span>＋</span> Создать</button></div>
+      </form>
+    </section>
+
+    <div class="company-list">
+    {% for company in companies %}
+      <article class="company-card" data-company-id="{{ company.id }}">
+        <header class="company-titlebar">
+          <div class="company-identity">
+            <div class="company-logo">{{ company.name[:1]|upper }}</div>
+            <div><h2>{{ company.name }}</h2><p>{% if company.bases %}{{ company.bases|length }} {{ 'база' if company.bases|length == 1 else 'баз' }} назначено{% else %}Базы пока не назначены{% endif %}</p></div>
+          </div>
+          <div class="company-actions">
+            <span data-role="control-badge" class="status-pill {% if company.enforcement_enabled and company.session_limit > 0 %}enabled{% else %}disabled{% endif %}"><span></span>{% if company.enforcement_enabled and company.session_limit > 0 %}Контроль включён{% else %}Контроль выключен{% endif %}</span>
+            <span data-role="over-limit" class="status-pill warning"{% if not company.over_limit %} hidden{% endif %}><span></span>Лимит превышен</span>
+            <form action="/companies/{{ company.id }}/delete" method="post" onsubmit="return confirm('Удалить компанию и её привязки?')"><button class="icon-button danger" type="submit" title="Удалить компанию" aria-label="Удалить компанию">×</button></form>
+          </div>
+        </header>
+
+        <div class="company-metrics">
+          <div><span>Пользователи онлайн</span><strong data-role="user-count">{{ company.user_session_count }}</strong></div>
+          <div><span>Доступный лимит</span><strong>{{ company.session_limit if company.session_limit > 0 else '∞' }}</strong></div>
+          <div><span>Осталось мест</span><strong data-role="remaining">{{ company.remaining_sessions if company.remaining_sessions is not none else '∞' }}</strong></div>
+          <div><span>Технических пропущено</span><strong data-role="ignored-count">{{ company.ignored_session_count }}</strong></div>
+        </div>
+
+        <div class="company-config">
+          <section class="assigned-panel">
+            <div class="panel-heading"><div><span class="panel-icon">▦</span><span><strong>Информационные базы</strong><small>Базы этой компании</small></span></div><button class="secondary" type="button" onclick="document.getElementById('bases-{{ company.id }}').showModal()">Настроить</button></div>
+            <div class="base-chips">
+              {% for base in company.bases %}<span><i></i>{{ base.infobase_name }}</span>{% else %}<p>Ни одной базы не назначено</p>{% endfor %}
+            </div>
+          </section>
+
+          <form class="control-panel" action="/companies/{{ company.id }}/control" method="post">
+            <div class="panel-heading"><div><span class="panel-icon">◎</span><span><strong>Контроль подключений</strong><small>Общий лимит по назначенным базам</small></span></div></div>
+            <div class="control-fields">
+              <label><span>Лимит сеансов</span><input type="number" name="session_limit" min="0" max="1000000" value="{{ company.session_limit }}" required><small>0 — без ограничения</small></label>
+              <label class="toggle-field"><span>Автоконтроль</span><span class="toggle"><input type="checkbox" name="enforcement_enabled"{% if company.enforcement_enabled %} checked{% endif %}><i></i><b>Завершать лишние</b></span><small>Новые сеансы сверх лимита</small></label>
+              <label class="exclude-field"><span>Исключённые пользователи</span><textarea name="excluded_users" placeholder="По одному имени в строке">{{ company.excluded_users|join('\n') }}</textarea></label>
+              <button class="primary save-control" type="submit">Сохранить настройки</button>
+            </div>
+            <div class="control-message" data-role="control-status">{% if company.control_status.message %}{{ company.control_status.message }}{% endif %}</div>
+          </form>
+        </div>
+
+        <section class="sessions-panel" id="sessions">
+          <div class="sessions-heading"><div><h3>Активные пользовательские сеансы</h3><p>Обновляются автоматически каждые две секунды</p></div><span class="session-counter"><i></i><b data-role="user-count-copy">{{ company.user_session_count }}</b> онлайн</span></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Пользователь</th><th>Информационная база</th><th>Компьютер</th><th>Приложение</th><th>Начало</th><th>ID сеанса</th></tr></thead>
+            <tbody data-role="sessions">
+            {% for session in company.sessions %}
+              <tr><td><span class="user-cell"><i>{{ (session.user_name or '?')[:1]|upper }}</i>{{ session.user_name or '—' }}</span></td><td>{{ session.infobase_name or session.infobase_id or '—' }}</td><td>{{ session.host or '—' }}</td><td><span class="app-tag">{{ session.app_id or '—' }}</span></td><td>{{ session.started_at or '—' }}</td><td><code>{{ session.id or '—' }}</code></td></tr>
+            {% else %}<tr class="empty-row"><td colspan="6"><span>◎</span><strong>Активных пользовательских сеансов нет</strong><small>Новые подключения появятся здесь автоматически</small></td></tr>{% endfor %}
+            </tbody>
+          </table></div>
+        </section>
+
+        <dialog id="bases-{{ company.id }}">
+          <form action="/companies/{{ company.id }}/bases" method="post">
+            <div class="dialog-header"><div><div class="eyebrow">НАЗНАЧЕНИЕ БАЗ</div><h2>{{ company.name }}</h2><p>Выберите информационные базы, которые относятся к компании.</p></div><button class="icon-button" type="button" aria-label="Закрыть" onclick="this.closest('dialog').close()">×</button></div>
+            <div class="dialog-body"><div class="base-grid">
+              {% for base in available_bases %}
+                {% set assigned_here = base.key in company.assigned_keys %}
+                {% set assigned_elsewhere = base.company_name and not assigned_here %}
+                <label class="base-option" data-base-key="{{ base.key }}">
+                  <input type="checkbox" name="base" value="{{ base.key }}"{% if assigned_here %} checked{% endif %}{% if assigned_elsewhere %} disabled{% endif %}>
+                  <span><strong>{{ base.infobase_name }}</strong><small>{{ base.cluster_name }}</small><small>Всего сеансов: <b data-role="base-count">{{ base.session_count }}</b>{% if assigned_elsewhere %} · {{ base.company_name }}{% endif %}</small></span>
+                </label>
+              {% else %}<div class="empty-bases">Список баз загружается из RAS…</div>{% endfor %}
+            </div></div>
+            <div class="dialog-actions"><button class="secondary" type="button" onclick="this.closest('dialog').close()">Отмена</button><button class="primary" type="submit">Сохранить выбранные базы</button></div>
+          </form>
+        </dialog>
+      </article>
+    {% else %}
+      <section class="empty-companies"><div>◇</div><h2>Создайте первую компанию</h2><p>После этого вы сможете назначить ей базы и настроить лимит пользовательских сеансов.</p></section>
+    {% endfor %}
+    </div>
+  </main>
+</div>
+
+<script>
+(() => {
+  const initialBaseCount = {{ available_bases|length }};
+  const display = value => value === null || value === undefined || value === '' ? '—' : String(value);
+  const makeCell = (value, className = '') => {
+    const td = document.createElement('td');
+    if (className) td.className = className;
+    td.textContent = display(value);
+    return td;
+  };
+  const renderSessions = (tbody, sessions) => {
+    tbody.replaceChildren();
+    if (!sessions.length) {
+      const row = document.createElement('tr'); row.className = 'empty-row';
+      const td = document.createElement('td'); td.colSpan = 6;
+      const icon = document.createElement('span'); icon.textContent = '◎';
+      const title = document.createElement('strong'); title.textContent = 'Активных пользовательских сеансов нет';
+      const hint = document.createElement('small'); hint.textContent = 'Новые подключения появятся здесь автоматически';
+      td.append(icon, title, hint); row.appendChild(td); tbody.appendChild(row); return;
+    }
+    for (const session of sessions) {
+      const row = document.createElement('tr');
+      const user = makeCell(''); const userWrap = document.createElement('span'); userWrap.className = 'user-cell';
+      const avatar = document.createElement('i'); avatar.textContent = (session.user_name || '?').slice(0, 1).toUpperCase();
+      userWrap.append(avatar, document.createTextNode(display(session.user_name))); user.appendChild(userWrap);
+      const app = makeCell(''); const tag = document.createElement('span'); tag.className = 'app-tag'; tag.textContent = display(session.app_id); app.appendChild(tag);
+      const id = makeCell(''); const code = document.createElement('code'); code.textContent = display(session.id); id.appendChild(code);
+      row.append(user, makeCell(session.infobase_name || session.infobase_id), makeCell(session.host), app, makeCell(session.started_at), id);
+      tbody.appendChild(row);
+    }
+  };
+  async function refresh() {
+    const liveDot = document.getElementById('live-dot');
+    const sideDot = document.getElementById('sidebar-dot');
+    try {
+      const response = await fetch('/api/dashboard', {cache: 'no-store'});
+      if (response.status === 401) { location.reload(); return; }
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      const baseCount = data.available_bases.length;
+      document.getElementById('base-count').textContent = baseCount;
+      document.getElementById('total-user-sessions').textContent = data.total_user_sessions;
+      if (baseCount !== initialBaseCount) { location.reload(); return; }
+      for (const base of data.available_bases) {
+        document.querySelectorAll(`[data-base-key="${CSS.escape(base.key)}"] [data-role="base-count"]`).forEach(node => node.textContent = base.session_count);
+      }
+      for (const company of data.companies) {
+        const root = document.querySelector(`[data-company-id="${company.id}"]`);
+        if (!root) continue;
+        root.querySelectorAll('[data-role="user-count"], [data-role="user-count-copy"]').forEach(node => node.textContent = company.user_session_count);
+        root.querySelector('[data-role="ignored-count"]').textContent = company.ignored_session_count;
+        root.querySelector('[data-role="remaining"]').textContent = company.remaining_sessions ?? '∞';
+        root.querySelector('[data-role="over-limit"]').hidden = !company.over_limit;
+        const status = root.querySelector('[data-role="control-status"]');
+        status.textContent = company.control_status?.error || company.control_status?.message || '';
+        status.classList.toggle('has-error', Boolean(company.control_status?.error));
+        renderSessions(root.querySelector('[data-role="sessions"]'), company.sessions);
+      }
+      liveDot.className = 'state-dot online'; sideDot.className = 'state-dot online';
+      document.getElementById('live-title').textContent = data.errors.length ? 'Частичные данные' : 'Данные актуальны';
+      document.getElementById('live-text').textContent = data.last_updated ? `Обновлено ${new Date(data.last_updated).toLocaleTimeString()}` : 'Получение данных';
+      document.getElementById('sidebar-state').textContent = data.errors.length ? 'Есть ошибки' : 'Подключено';
+    } catch (error) {
+      liveDot.className = 'state-dot error'; sideDot.className = 'state-dot error';
+      document.getElementById('live-title').textContent = 'Нет связи';
+      document.getElementById('live-text').textContent = 'Проверяем веб-сервис';
+      document.getElementById('sidebar-state').textContent = 'Недоступно';
+    }
+  }
+  refresh();
+  setInterval(refresh, 2000);
+})();
+</script>
+</body>
+</html>

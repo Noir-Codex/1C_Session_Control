@@ -1,0 +1,12 @@
+# Full path is preferred when several 1C platform versions are installed.
+rac_path = "C:\\Program Files\\1cv8\\8.3.xx.xxxx\\bin\\rac.exe"
+command_timeout_seconds = 30
+log_file = "logs/session-control.log"
+
+[[servers]]
+name = "SRV-1C01"
+host = "127.0.0.1"
+port = 1545
+# Store credentials in environment variables, not in this file.
+cluster_user_env = "SESSION_CONTROL_CLUSTER_USER"
+cluster_password_env = "SESSION_CONTROL_CLUSTER_PASSWORD"
