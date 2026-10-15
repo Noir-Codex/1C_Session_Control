@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import base64
 import logging
+import os
+import re
 from pathlib import Path
 from urllib.parse import parse_qs, urlencode
 
@@ -10,10 +12,11 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from onec.rac import RacError
+from config import ConfigurationError, RasServer, Settings, save_settings
+from onec.rac import RacClient, RacError
 from web.auth import ClusterCredentials
 from web.company_store import AssignedInfobase, Company, CompanyStoreError
-from web.monitor import is_user_session
+from web.monitor import application_name, is_user_session
 
 log = logging.getLogger(__name__)
 router = APIRouter()
@@ -58,6 +61,7 @@ def _available_bases(snapshots: list[dict[str, object]]) -> list[dict[str, objec
                     continue
                 item = dict(session)
                 item.pop("raw", None)
+                item["app_name"] = application_name(item.get("app_id", ""))
                 item["server_endpoint"] = endpoint
                 item["cluster_id"] = cluster_id
                 sessions_by_base.setdefault(infobase_id, []).append(item)
@@ -145,9 +149,14 @@ def _current_credentials(request: Request) -> ClusterCredentials | None:
     return request.app.state.credentials.get(request.cookies.get(AUTH_COOKIE))
 
 
-def _redirect(*, message: str | None = None, error: str | None = None) -> RedirectResponse:
+def _redirect(
+    *,
+    message: str | None = None,
+    error: str | None = None,
+    path: str = "/",
+) -> RedirectResponse:
     query = urlencode({key: value for key, value in {"message": message, "error": error}.items() if value})
-    return RedirectResponse(url=f"/{'?' + query if query else ''}", status_code=303)
+    return RedirectResponse(url=f"{path}{'?' + query if query else ''}", status_code=303)
 
 
 async def _form_fields(request: Request) -> dict[str, list[str]]:
@@ -159,7 +168,7 @@ async def _form_fields(request: Request) -> dict[str, list[str]]:
 def _login_page(request: Request, error: str | None = None, username: str = "") -> HTMLResponse:
     return templates.TemplateResponse(
         request=request,
-        name="login.html",
+        name="login_v2.html",
         context={"error": error, "username": username},
         status_code=401 if error else 200,
     )
@@ -311,7 +320,7 @@ async def login(request: Request) -> HTMLResponse:
     try:
         await run_in_threadpool(_validate_credentials, request, credentials)
     except RacError as exc:
-        log.warning("Cluster administrator authentication failed: %s", exc)
+        log.warning("Не удалось выполнить вход администратора кластера: %s", exc)
         return _login_page(request, f"Не удалось войти: {exc}", username)
     token = request.app.state.credentials.create(credentials)
     request.app.state.monitor.set_credentials(credentials)
@@ -480,13 +489,43 @@ def _read_log_entries(path: Path, limit: int = 250) -> list[dict[str, str]]:
         else:
             date, clock, level, message = "", "", "INFO", line
         source, separator, event = message.partition(": ")
+        source = source if separator else "application"
+        event = event if separator else message
+        legacy_termination = re.fullmatch(
+            r"Terminated excess user session (\S+) for company (.+)", event
+        )
+        if legacy_termination:
+            event = (
+                f"Завершён лишний пользовательский сеанс {legacy_termination.group(1)} "
+                f"для компании «{legacy_termination.group(2)}»"
+            )
+        legacy_prefixes = {
+            "Cluster administrator authentication failed: ": "Не удалось выполнить вход администратора кластера: ",
+            "Cannot refresh sessions for cluster ": "Не удалось обновить сеансы кластера ",
+            "Cannot refresh RAS topology ": "Не удалось обновить структуру RAS ",
+            "Cannot terminate session ": "Не удалось завершить сеанс ",
+            "Unexpected background monitor failure": "Непредвиденная ошибка фонового мониторинга",
+            "rac.exe failed (code ": "Ошибка rac.exe (код ",
+            "Skipping unavailable cluster ": "Пропущен недоступный кластер ",
+        }
+        for old_prefix, new_prefix in legacy_prefixes.items():
+            if event.startswith(old_prefix):
+                event = new_prefix + event[len(old_prefix):]
+                break
+        source = {
+            "web.monitor": "Контроль сеансов",
+            "web.routes_v2": "Веб-интерфейс",
+            "onec.rac": "RAC",
+            "onec.discovery": "Опрос 1С",
+            "application": "Приложение",
+        }.get(source, source)
         entries.append(
             {
                 "date": date,
                 "time": clock,
                 "level": level.upper(),
-                "source": source if separator else "application",
-                "event": event if separator else message,
+                "source": source,
+                "event": event,
             }
         )
     return entries
@@ -574,6 +613,120 @@ async def logs_page(request: Request) -> HTMLResponse:
     )
 
 
+def _positive_number(fields: dict[str, list[str]], name: str, label: str) -> float:
+    raw = fields.get(name, [""])[0].strip().replace(",", ".")
+    try:
+        value = float(raw)
+    except ValueError as exc:
+        raise ConfigurationError(f"{label}: введите положительное число") from exc
+    if value <= 0:
+        raise ConfigurationError(f"{label}: значение должно быть больше нуля")
+    return value
+
+
+def _settings_from_form(request: Request, fields: dict[str, list[str]]) -> Settings:
+    rac_value = os.path.expandvars(fields.get("rac_path", [""])[0].strip())
+    rac_path = Path(rac_value).expanduser()
+    if not rac_value or not rac_path.is_file():
+        raise ConfigurationError(f"rac.exe не найден: {rac_path if rac_value else 'путь не указан'}")
+
+    log_value = fields.get("log_file", [""])[0].strip()
+    if not log_value:
+        raise ConfigurationError("Укажите путь к файлу журнала")
+
+    names = fields.get("server_name", [])
+    hosts = fields.get("server_host", [])
+    ports = fields.get("server_port", [])
+    count = max(len(names), len(hosts), len(ports))
+    current_by_endpoint = {server.endpoint: server for server in request.app.state.settings.servers}
+    servers: list[RasServer] = []
+    for index in range(count):
+        name = names[index].strip() if index < len(names) else ""
+        host = hosts[index].strip() if index < len(hosts) else ""
+        port_text = ports[index].strip() if index < len(ports) else ""
+        if not name and not host and not port_text:
+            continue
+        if not host:
+            raise ConfigurationError(f"RAS-сервер #{index + 1}: укажите адрес")
+        try:
+            port = int(port_text)
+        except ValueError as exc:
+            raise ConfigurationError(f"RAS-сервер #{index + 1}: порт должен быть целым числом") from exc
+        if not 1 <= port <= 65535:
+            raise ConfigurationError(f"RAS-сервер #{index + 1}: порт должен быть от 1 до 65535")
+        previous = current_by_endpoint.get(f"{host}:{port}")
+        servers.append(RasServer(
+            name=name or host,
+            host=host,
+            port=port,
+            cluster_user=previous.cluster_user if previous else "",
+            cluster_password=previous.cluster_password if previous else "",
+            cluster_user_env=previous.cluster_user_env if previous else "",
+            cluster_password_env=previous.cluster_password_env if previous else "",
+        ))
+    if not servers:
+        raise ConfigurationError("Добавьте хотя бы один RAS-сервер")
+
+    return Settings(
+        rac_path=rac_path.resolve(),
+        command_timeout_seconds=_positive_number(
+            fields, "command_timeout_seconds", "Тайм-аут команды"
+        ),
+        log_file=Path(os.path.expandvars(log_value)).expanduser(),
+        servers=tuple(servers),
+        poll_interval_seconds=_positive_number(
+            fields, "poll_interval_seconds", "Интервал обновления сеансов"
+        ),
+        topology_refresh_seconds=_positive_number(
+            fields, "topology_refresh_seconds", "Интервал обновления топологии"
+        ),
+    )
+
+
+def _replace_log_handler(log_file: Path) -> None:
+    target = log_file.resolve()
+    root = logging.getLogger()
+    current_handlers = [handler for handler in root.handlers if isinstance(handler, logging.FileHandler)]
+    if any(Path(handler.baseFilename).resolve() == target for handler in current_handlers):
+        return
+    target.parent.mkdir(parents=True, exist_ok=True)
+    new_handler = logging.FileHandler(target, encoding="utf-8")
+    new_handler.setFormatter(logging.Formatter(
+        "%(asctime)s %(levelname)s %(name)s: %(message)s",
+        datefmt="%d.%m.%Y %H:%M:%S",
+    ))
+    root.addHandler(new_handler)
+    for handler in current_handlers:
+        root.removeHandler(handler)
+        handler.close()
+
+
+@router.post("/settings", include_in_schema=False)
+async def update_settings(request: Request) -> RedirectResponse:
+    if _current_credentials(request) is None:
+        return _redirect(error="Сначала войдите как администратор кластера", path="/settings")
+    fields = await _form_fields(request)
+    try:
+        settings = _settings_from_form(request, fields)
+        config_path = request.app.state.config_path
+        await run_in_threadpool(save_settings, config_path, settings)
+        await run_in_threadpool(_replace_log_handler, settings.log_file)
+    except (ConfigurationError, OSError) as exc:
+        return _redirect(error=str(exc), path="/settings")
+
+    rac = RacClient(settings.rac_path, settings.command_timeout_seconds)
+    request.app.state.settings = settings
+    request.app.state.rac = rac
+    request.app.state.monitor.reconfigure(
+        rac,
+        settings.servers,
+        poll_seconds=settings.poll_interval_seconds,
+        topology_seconds=settings.topology_refresh_seconds,
+    )
+    log.info("Настройки сохранены через веб-интерфейс")
+    return _redirect(message="Настройки сохранены и применены", path="/settings")
+
+
 @router.get("/settings", response_class=HTMLResponse, include_in_schema=False)
 async def settings_page(request: Request) -> HTMLResponse:
     settings = request.app.state.settings
@@ -587,6 +740,10 @@ async def settings_page(request: Request) -> HTMLResponse:
             "rac_path": str(settings.rac_path),
             "command_timeout": settings.command_timeout_seconds,
             "log_file": str(settings.log_file),
+            "settings_servers": settings.servers,
+            "poll_interval": settings.poll_interval_seconds,
+            "topology_refresh": settings.topology_refresh_seconds,
+            "config_path": str(request.app.state.config_path),
         },
     )
 

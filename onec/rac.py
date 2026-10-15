@@ -23,7 +23,7 @@ class RacClient:
 
     def _run(self, arguments: Sequence[str]) -> str:
         command = [str(self.executable), *arguments]
-        log.debug("Executing RAC operation: %s", " ".join(self._redact(command)))
+        log.debug("Выполняется команда RAC: %s", " ".join(self._redact(command)))
         try:
             completed = subprocess.run(
                 command,
@@ -38,8 +38,8 @@ class RacClient:
         stdout = decode_windows_output(completed.stdout).strip()
         stderr = decode_windows_output(completed.stderr).strip()
         if completed.returncode != 0:
-            log.error("rac.exe failed (code %s): %s", completed.returncode, stderr or stdout)
-            raise RacError(stderr or stdout or f"rac.exe exited with code {completed.returncode}")
+            log.error("Ошибка rac.exe (код %s): %s", completed.returncode, stderr or stdout)
+            raise RacError(stderr or stdout or f"rac.exe завершился с кодом {completed.returncode}")
         return stdout
 
     @staticmethod

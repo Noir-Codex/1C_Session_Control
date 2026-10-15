@@ -22,10 +22,27 @@ log = logging.getLogger(__name__)
 # as technical and is never terminated automatically.
 INTERACTIVE_APP_IDS = frozenset({"1cv8", "1cv8c", "webclient", "mobileclient"})
 DEFAULT_ADMIN_USERS = frozenset({"admin", "administrator", "администратор"})
+APPLICATION_NAMES = {
+    "1cv8c": "1С:Предприятие (тонкий клиент)",
+    "1cv8": "1С:Предприятие (толстый клиент)",
+    "webclient": "Веб-клиент",
+    "mobileclient": "Мобильный клиент",
+    "designer": "Конфигуратор",
+    "backgroundjob": "Фоновое задание",
+    "comconnection": "COM-соединение",
+    "webservice": "Веб-сервис",
+    "httpservice": "HTTP-сервис",
+}
 
 
 def _normalized(value: object) -> str:
     return "".join(character for character in str(value).casefold() if character.isalnum())
+
+
+def application_name(value: object) -> str:
+    """Return a Russian display name for a RAC application identifier."""
+    raw = str(value).strip()
+    return APPLICATION_NAMES.get(_normalized(raw), raw or "Не указан")
 
 
 def is_user_session(
@@ -112,6 +129,25 @@ class MonitorService:
                 self._topology_at = 0.0
         self._wake.set()
 
+    def reconfigure(
+        self,
+        rac: RacClient,
+        servers: tuple[RasServer, ...],
+        *,
+        poll_seconds: float,
+        topology_seconds: float,
+    ) -> None:
+        """Apply connection and polling settings to the running monitor."""
+        with self._lock:
+            self.rac = rac
+            self.servers = servers
+            self.poll_seconds = poll_seconds
+            self.topology_seconds = topology_seconds
+            self._topology = {}
+            self._topology_at = 0.0
+            self._errors = []
+        self._wake.set()
+
     def state(self) -> dict[str, Any]:
         with self._lock:
             return {
@@ -134,7 +170,7 @@ class MonitorService:
             try:
                 self._refresh(credentials)
             except Exception:
-                log.exception("Unexpected background monitor failure")
+                log.exception("Непредвиденная ошибка фонового мониторинга")
                 with self._lock:
                     self._refreshing = False
                     self._errors = [{
@@ -158,7 +194,7 @@ class MonitorService:
             try:
                 topology[server.endpoint] = service.collect(server, include_sessions=False)
             except RacError as exc:
-                log.error("Cannot refresh RAS topology %s: %s", server.endpoint, exc)
+                log.error("Не удалось обновить структуру RAS %s: %s", server.endpoint, exc)
                 errors.append({"server": server.name, "endpoint": server.endpoint, "error": str(exc)})
         return topology, errors
 
@@ -205,7 +241,7 @@ class MonitorService:
                         for item in records
                     )
                 except RacError as exc:
-                    log.error("Cannot refresh sessions for cluster %s: %s", cluster_id, exc)
+                    log.error("Не удалось обновить сеансы кластера %s: %s", cluster_id, exc)
                     errors.append({"server": server.name, "endpoint": server.endpoint, "error": str(exc)})
                     sessions = ()
                 clusters.append(ClusterSnapshot(cluster_snapshot.cluster, cluster_snapshot.infobases, sessions))
@@ -286,11 +322,13 @@ class MonitorService:
                     )
                     terminated += 1
                     log.warning(
-                        "Terminated excess user session %s for company %s", session_id, company.name
+                        "Завершён лишний пользовательский сеанс %s для компании «%s»",
+                        session_id,
+                        company.name,
                     )
                 except RacError as exc:
                     failures.append(str(exc))
-                    log.error("Cannot terminate session %s: %s", session_id, exc)
+                    log.error("Не удалось завершить сеанс %s: %s", session_id, exc)
             status = {
                 "at": datetime.now(timezone.utc).isoformat(),
                 "message": f"Завершено лишних пользовательских сеансов: {terminated}",

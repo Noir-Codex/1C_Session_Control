@@ -17,10 +17,10 @@
 .ras-compact strong, .admin-compact strong { overflow: hidden; font-size: 13px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
 .ras-compact small, .admin-compact small { color: var(--text-muted); }
 .admin-compact { margin-top: 4px; border-top: 1px solid var(--border-soft); padding-top: 12px; }
-.admin-avatar { display: grid; width: 28px; height: 28px; flex: 0 0 auto; place-items: center; border-radius: 50%; color: white; background: #30363d; font-size: 12px; font-weight: 600; }
+.admin-avatar { display: grid; width: 28px; height: 28px; flex: 0 0 auto; place-items: center; border-radius: 50%; color: white; background: var(--border); font-size: 12px; font-weight: 600; }
 .admin-compact form { margin-left: auto; }
 .main-content { width: calc(100% - var(--sidebar-width)); min-height: 100vh; margin-left: var(--sidebar-width); }
-.page-header { display: flex; min-height: 72px; align-items: center; gap: 16px; padding: 12px 32px; border-bottom: 1px solid var(--border-soft); background: rgba(13,17,23,.92); }
+.page-header { display: flex; width: 100%; max-width: 1600px; min-height: 72px; align-items: center; gap: 16px; margin: 0 auto; padding: 12px 32px; border-bottom: 1px solid var(--border-soft); background: rgba(13,17,23,.92); }
 .page-heading { min-width: 0; flex: 1; }
 .page-heading p { margin-top: 2px; overflow: hidden; color: var(--text-secondary); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .header-actions { display: flex; align-items: center; gap: 8px; }
@@ -29,12 +29,10 @@
 .header-status strong { font-size: 13px; font-weight: 500; }
 .header-status small { color: var(--text-muted); }
 .sidebar-toggle { display: none !important; }
-.page-body { width: 100%; max-width: 1600px; padding: 24px 32px 40px; }
+.page-body { width: 100%; max-width: 1600px; margin: 0 auto; padding: 24px 32px 40px; }
 .sidebar-backdrop { display: none; }
 @media (max-width: 1439px) { .page-header, .page-body { padding-right: 24px; padding-left: 24px; } }
-@media (max-width: 1199px) { :root { --sidebar-width: 210px; } }
 @media (max-width: 991px) {
-  :root { --sidebar-width: 240px; }
   .sidebar { transform: translateX(-100%); transition: transform 150ms ease; }
   body.sidebar-open .sidebar { transform: translateX(0); }
   .main-content { width: 100%; margin-left: 0; }
@@ -48,5 +46,5 @@
   .header-actions { width: 100%; order: 2; }
   .header-status { margin-right: auto; }
   .header-actions .button span { display: none; }
-  .page-body { padding: 16px; }
+  .page-header, .page-body { padding-right: 16px; padding-left: 16px; }
 }

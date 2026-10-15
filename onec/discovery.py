@@ -38,7 +38,7 @@ class DiscoveryService:
             except RacError as exc:
                 # A broken cluster must not stop discovery on other clusters or
                 # on other configured RAS servers.
-                log.error("Skipping unavailable cluster %s on %s: %s", cluster_id, server.endpoint, exc)
+                log.error("Недоступный кластер %s на %s пропущен: %s", cluster_id, server.endpoint, exc)
                 continue
             bases = tuple(
                 Infobase(_value(x, "infobase"), _value(x, "name"), cluster_id, x)

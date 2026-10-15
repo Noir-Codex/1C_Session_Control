@@ -13,7 +13,7 @@
     <thead><tr><th>Компания</th><th class="number">Базы</th><th class="number">Сеансы</th><th class="number">Лимит</th><th class="number">Свободно</th><th>Использование</th><th>Контроль</th><th>Статус</th><th class="actions-col"></th></tr></thead>
     <tbody>
     {% for company in companies %}
-      <tr data-company-row="{{ company.id }}" data-search-text="{{ company.name|lower }}">
+      <tr data-company-row="{{ company.id }}" data-search-text="{{ company.name|lower }}" data-row-href="/companies/{{ company.id }}" tabindex="0">
         <td><a class="primary-link" href="/companies/{{ company.id }}">{{ company.name }}</a></td>
         <td class="number">{{ company.bases|length }}</td><td class="number" data-company-users>{{ company.user_session_count }}</td><td class="number">{{ company.session_limit if company.session_limit > 0 else '—' }}</td><td class="number" data-company-remaining>{{ company.remaining_sessions if company.remaining_sessions is not none else '—' }}</td>
         <td><div class="usage-cell"><span><b data-company-usage-text>{{ company.user_session_count }} / {{ company.session_limit if company.session_limit > 0 else '∞' }}</b><small>{{ company.usage_percent }}%</small></span><progress data-company-progress max="{{ company.session_limit if company.session_limit > 0 else 1 }}" value="{{ company.user_session_count }}" class="{{ company.status_key }}"></progress></div></td>

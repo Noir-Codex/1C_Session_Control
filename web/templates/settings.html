@@ -1,8 +1,62 @@
 {% extends "admin_base.html" %}
 {% block content %}
-<div class="settings-grid">
-  <section class="panel settings-summary"><div class="section-header"><div><h2>Подключение RAC</h2><p>Параметры читаются из config.toml.</p></div></div><dl class="definition-list"><div><dt>Исполняемый файл</dt><dd><code title="{{ rac_path }}">{{ rac_path }}</code></dd></div><div><dt>Тайм-аут команды</dt><dd>{{ command_timeout }} секунд</dd></div><div><dt>Файл журнала</dt><dd><code>{{ log_file }}</code></dd></div></dl></section>
-  <section class="panel settings-summary"><div class="section-header"><div><h2>Обновление данных</h2><p>Текущие параметры фонового мониторинга.</p></div></div><dl class="definition-list"><div><dt>Интервал интерфейса</dt><dd>2 секунды</dd></div><div><dt>Топология серверов</dt><dd>60 секунд</dd></div><div><dt>Источник данных</dt><dd>Фоновый кэш RAC</dd></div></dl></section>
-</div>
-<section class="panel help-panel"><div class="help-icon">{{ icon('info') }}</div><div><h2>Изменение настроек</h2><p>Чтобы изменить путь RAC, сервер RAS или тайм-аут, отредактируйте <code>config.toml</code> и перезапустите приложение через <code>start.bat</code>. Пароль администратора в файле не сохраняется.</p></div></section>
+<form class="panel settings-editor" action="/settings" method="post">
+  <div class="section-header">
+    <div><h2>Параметры приложения</h2><p>Изменения сохраняются в {{ config_path }} и применяются сразу.</p></div>
+    <button class="button primary" type="submit">Сохранить настройки</button>
+  </div>
+
+  <div class="settings-edit-grid">
+    <section class="settings-edit-section">
+      <h3>Подключение RAC</h3>
+      <p>Исполняемый файл и ограничение времени выполнения команд.</p>
+      <div class="settings-fields">
+        <label class="field"><span>Путь к rac.exe</span><input type="text" name="rac_path" value="{{ rac_path }}" required spellcheck="false"></label>
+        <label class="field"><span>Тайм-аут команды, секунд</span><input type="number" name="command_timeout_seconds" value="{{ command_timeout }}" min="0.1" step="0.1" required></label>
+        <label class="field"><span>Файл журнала</span><input type="text" name="log_file" value="{{ log_file }}" required spellcheck="false"></label>
+      </div>
+    </section>
+
+    <section class="settings-edit-section">
+      <h3>Обновление данных</h3>
+      <p>Частота опроса сеансов и повторного чтения списка баз.</p>
+      <div class="settings-fields">
+        <label class="field"><span>Сеансы, секунд</span><input type="number" name="poll_interval_seconds" value="{{ poll_interval }}" min="0.1" step="0.1" required></label>
+        <label class="field"><span>Топология серверов, секунд</span><input type="number" name="topology_refresh_seconds" value="{{ topology_refresh }}" min="0.1" step="0.1" required></label>
+      </div>
+    </section>
+  </div>
+
+  <section class="server-settings">
+    <div class="server-settings-header">
+      <div><h3>RAS-серверы</h3><p>Укажите имя, адрес и порт каждого сервера администрирования 1С.</p></div>
+      <button class="button secondary" type="button" data-add-server>{{ icon('plus') }}Добавить сервер</button>
+    </div>
+    <div class="server-list" data-server-list>
+      <div class="server-row server-row-head" aria-hidden="true"><span>Название</span><span>Адрес</span><span>Порт</span><span></span></div>
+      {% for server in settings_servers %}
+      <div class="server-row" data-server-row>
+        <input type="text" name="server_name" value="{{ server.name }}" placeholder="SRV-1C01" aria-label="Название RAS-сервера">
+        <input type="text" name="server_host" value="{{ server.host }}" placeholder="127.0.0.1" aria-label="Адрес RAS-сервера" required>
+        <input type="number" name="server_port" value="{{ server.port }}" min="1" max="65535" step="1" aria-label="Порт RAS-сервера" required>
+        <button class="button danger server-remove" type="button" data-remove-server>Удалить</button>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <div class="settings-actions">
+    <div class="settings-security"><span class="status-dot info"></span><span><strong>Пароль не сохраняется</strong><small>Учётные данные администратора остаются только в текущей авторизованной сессии.</small></span></div>
+    <button class="button primary" type="submit">Сохранить настройки</button>
+  </div>
+</form>
+
+<template id="server-row-template">
+  <div class="server-row" data-server-row>
+    <input type="text" name="server_name" placeholder="Новый сервер" aria-label="Название RAS-сервера">
+    <input type="text" name="server_host" placeholder="127.0.0.1" aria-label="Адрес RAS-сервера" required>
+    <input type="number" name="server_port" value="1545" min="1" max="65535" step="1" aria-label="Порт RAS-сервера" required>
+    <button class="button danger server-remove" type="button" data-remove-server>Удалить</button>
+  </div>
+</template>
 {% endblock %}

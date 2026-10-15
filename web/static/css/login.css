@@ -1,0 +1,37 @@
+html, body.login-page { min-height: 100%; }
+body.login-page {
+  display: flex;
+  min-height: 100vh;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: radial-gradient(circle at center, rgba(22,27,34,.55) 0%, var(--bg-main) 58%);
+}
+.login-card {
+  width: 400px;
+  max-width: calc(100vw - 32px);
+  padding: 28px;
+  border: 1px solid var(--border);
+  border-radius: var(--panel-radius);
+  background: var(--bg-panel);
+  box-shadow: 0 16px 48px rgba(0,0,0,.35);
+}
+.login-logo { display: grid; width: 40px; height: 40px; margin-bottom: 20px; place-items: center; border-radius: var(--radius); color: white; background: var(--accent); font-size: 14px; font-weight: 700; }
+.login-eyebrow { margin-bottom: 8px; color: var(--info); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .12em; }
+.login-card h1 { color: var(--text-primary); font-size: 28px; font-weight: 600; }
+.login-subtitle { margin-top: 8px; color: var(--text-secondary); font-size: 14px; }
+.login-card form { display: grid; gap: 16px; margin-top: 24px; }
+.login-card label { display: grid; gap: 8px; }
+.login-card label > span { color: var(--text-primary); font-size: 13px; font-weight: 500; }
+.login-card input { width: 100%; height: 40px; padding: 0 12px; color: var(--text-primary); border: 1px solid var(--border); border-radius: var(--radius); outline: 0; background: var(--bg-input); transition: border-color 140ms ease, box-shadow 140ms ease; }
+.login-card input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(47,129,247,.18); }
+.login-card button { display: flex; width: 100%; height: 40px; align-items: center; justify-content: center; margin-top: 4px; padding: 0 12px; color: white; border: 1px solid var(--accent); border-radius: var(--radius); background: var(--accent); font-weight: 600; transition: background 140ms ease, border-color 140ms ease; }
+.login-card button:hover { border-color: var(--accent-hover); background: var(--accent-hover); }
+.login-card button:active { border-color: var(--accent-active); background: var(--accent-active); }
+.login-note { max-width: 320px; margin: 20px auto 0; color: var(--text-secondary); font-size: 12px; text-align: center; }
+.login-error { display: flex; align-items: flex-start; gap: 10px; margin-top: 20px; padding: 12px; border: 1px solid rgba(248,81,73,.4); border-radius: var(--radius); color: var(--danger); background: var(--danger-bg); }
+.login-error > span { display: grid; width: 20px; height: 20px; flex: 0 0 auto; place-items: center; border: 1px solid currentColor; border-radius: 50%; font-size: 11px; font-weight: 700; }
+.login-error > div { display: flex; min-width: 0; flex-direction: column; }
+.login-error strong { font-size: 13px; font-weight: 600; }
+.login-error small { margin-top: 2px; color: var(--text-secondary); overflow-wrap: anywhere; }
+@media (max-width: 480px) { .login-card { padding: 24px 20px 20px; } }

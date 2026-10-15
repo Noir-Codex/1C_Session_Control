@@ -49,6 +49,10 @@ class DashboardGroupingTests(unittest.TestCase):
             {"Первая": 0, "Вторая": 1},
         )
         self.assertEqual(len(views[0]["sessions"]), 1)
+        self.assertEqual(
+            views[0]["sessions"][0]["app_name"],
+            "1С:Предприятие (тонкий клиент)",
+        )
         self.assertEqual(views[0]["session_limit"], 5)
         self.assertEqual(views[0]["remaining_sessions"], 4)
         self.assertFalse(views[0]["over_limit"])

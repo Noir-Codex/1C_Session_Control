@@ -46,6 +46,20 @@
     select.addEventListener('change', () => filterTable(document.querySelector('.admin-table')));
   });
 
+  document.querySelectorAll('tr[data-row-href]').forEach(row => {
+    const openRow = event => {
+      if (event.target.closest('a, button, input, select, textarea')) return;
+      window.location.href = row.dataset.rowHref;
+    };
+    row.addEventListener('click', openRow);
+    row.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        openRow(event);
+      }
+    });
+  });
+
   document.querySelectorAll('[data-open-dialog]').forEach(button => {
     button.addEventListener('click', () => document.getElementById(button.dataset.openDialog)?.showModal());
   });
@@ -57,6 +71,30 @@
       if (event.target === dialog) dialog.close();
     });
   });
+
+  const serverList = document.querySelector('[data-server-list]');
+  const updateServerRemoveButtons = () => {
+    if (!serverList) return;
+    const rows = serverList.querySelectorAll('[data-server-row]');
+    rows.forEach(row => {
+      row.querySelector('[data-remove-server]').disabled = rows.length <= 1;
+    });
+  };
+  document.querySelector('[data-add-server]')?.addEventListener('click', () => {
+    const template = document.getElementById('server-row-template');
+    if (!serverList || !template) return;
+    const row = template.content.firstElementChild.cloneNode(true);
+    serverList.appendChild(row);
+    updateServerRemoveButtons();
+    row.querySelector('input')?.focus();
+  });
+  serverList?.addEventListener('click', event => {
+    const button = event.target.closest('[data-remove-server]');
+    if (!button || button.disabled) return;
+    button.closest('[data-server-row]')?.remove();
+    updateServerRemoveButtons();
+  });
+  updateServerRemoveButtons();
 
   document.querySelector('[data-sidebar-toggle]')?.addEventListener('click', () => body.classList.toggle('sidebar-open'));
   document.querySelector('[data-sidebar-backdrop]')?.addEventListener('click', () => body.classList.remove('sidebar-open'));
@@ -89,6 +127,41 @@
     return cell;
   };
 
+  const formatDuration = startedAt => {
+    if (!startedAt) return '—';
+    const started = new Date(startedAt);
+    if (Number.isNaN(started.getTime())) return '—';
+    const totalSeconds = Math.max(0, Math.floor((Date.now() - started.getTime()) / 1000));
+    const days = Math.floor(totalSeconds / 86400);
+    const hours = Math.floor((totalSeconds % 86400) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    const clock = [hours, minutes, seconds].map(value => String(value).padStart(2, '0')).join(':');
+    return days ? `${days} дн. ${clock}` : clock;
+  };
+
+  const formatTimestamp = value => {
+    if (!value) return '—';
+    const timestamp = new Date(value);
+    if (Number.isNaN(timestamp.getTime())) return value;
+    return timestamp.toLocaleString('ru-RU', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+    }).replace(',', '');
+  };
+
+  const updateDurations = () => {
+    document.querySelectorAll('[data-session-duration]').forEach(node => {
+      node.textContent = formatDuration(node.dataset.sessionDuration);
+    });
+  };
+
+  const updateTimestamps = () => {
+    document.querySelectorAll('[data-timestamp]').forEach(node => {
+      node.textContent = formatTimestamp(node.dataset.timestamp);
+    });
+  };
+
   const renderCompanySessions = companies => {
     const companyId = Number(body.dataset.companyId || 0);
     const target = document.querySelector('[data-company-session-body]');
@@ -112,8 +185,8 @@
       addTextCell(row, session.infobase_name || session.infobase_id);
       addTextCell(row, session.host);
       const app = addTextCell(row, ''); app.textContent = '';
-      const tag = document.createElement('span'); tag.className = 'code-badge'; tag.textContent = session.app_id || '—'; app.appendChild(tag);
-      addTextCell(row, session.started_at);
+      const tag = document.createElement('span'); tag.className = 'code-badge'; tag.textContent = session.app_name || 'Не указан'; tag.title = session.app_id || ''; app.appendChild(tag);
+      addTextCell(row, formatTimestamp(session.started_at));
       const id = addTextCell(row, ''); id.textContent = '';
       const code = document.createElement('code'); code.textContent = session.id || '—'; id.appendChild(code);
       target.appendChild(row);
@@ -126,7 +199,7 @@
     if (!target) return;
     target.replaceChildren();
     if (!sessions.length) {
-      const row = document.createElement('tr'); const cell = document.createElement('td'); cell.colSpan = 7;
+      const row = document.createElement('tr'); const cell = document.createElement('td'); cell.colSpan = 9;
       const empty = document.createElement('div'); empty.className = 'empty-state';
       const title = document.createElement('strong'); title.textContent = 'Активных сеансов нет';
       empty.appendChild(title); cell.appendChild(empty); row.appendChild(cell); target.appendChild(row); return;
@@ -134,15 +207,22 @@
     for (const session of sessions) {
       const row = document.createElement('tr');
       if (!session.counted) row.className = 'technical-row';
-      row.dataset.searchText = `${session.user_name || ''} ${session.host || ''} ${session.infobase_name || ''}`.toLocaleLowerCase();
+      const clientIp = session.client_ip || session.ip || session.connection_address || '';
+      row.dataset.searchText = `${session.user_name || ''} ${session.host || ''} ${session.infobase_name || ''} ${clientIp} ${session.app_name || ''}`.toLocaleLowerCase();
       row.dataset.company = (session.company_name || '').toLocaleLowerCase();
       row.dataset.base = (session.infobase_name || '').toLocaleLowerCase();
       row.dataset.kind = session.counted ? 'counted' : 'ignored';
       addTextCell(row, session.company_name); addTextCell(row, session.infobase_name);
       const user = addTextCell(row, ''); user.textContent = ''; const strong = document.createElement('strong'); strong.textContent = session.user_name || '—'; user.appendChild(strong);
       addTextCell(row, session.host);
-      const app = addTextCell(row, ''); app.textContent = ''; const tag = document.createElement('span'); tag.className = 'code-badge'; tag.textContent = session.app_id || '—'; app.appendChild(tag);
-      addTextCell(row, session.started_at);
+      addTextCell(row, clientIp);
+      const app = addTextCell(row, ''); app.textContent = ''; const tag = document.createElement('span');
+      const appType = (session.app_id || '').toLocaleLowerCase();
+      tag.className = `code-badge ${appType === 'backgroundjob' ? 'background-job' : appType === 'designer' ? 'designer' : ''}`;
+      tag.textContent = session.app_name || 'Не указан'; tag.title = session.app_id || ''; app.appendChild(tag);
+      addTextCell(row, formatTimestamp(session.started_at));
+      const duration = addTextCell(row, ''); duration.textContent = ''; const durationText = document.createElement('span');
+      durationText.dataset.sessionDuration = session.started_at || ''; durationText.textContent = formatDuration(session.started_at); duration.appendChild(durationText);
       const counted = addTextCell(row, ''); counted.textContent = ''; const badge = document.createElement('span'); setBadge(badge, session.counted ? 'success' : 'neutral', session.counted ? 'Учитывается' : 'Не учитывается'); counted.appendChild(badge);
       target.appendChild(row);
     }
@@ -181,6 +261,9 @@
     }
   };
   document.querySelectorAll('[data-refresh-button]').forEach(button => button.addEventListener('click', manualRefresh));
+  updateTimestamps();
+  updateDurations();
   refresh();
+  window.setInterval(updateDurations, 1000);
   window.setInterval(refresh, 2000);
 })();

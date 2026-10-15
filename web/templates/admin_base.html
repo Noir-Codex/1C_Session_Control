@@ -24,15 +24,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ page_title }} — 1C Session Control</title>
-  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/static/css/variables.css?v=5">
-  <link rel="stylesheet" href="/static/css/base.css?v=5">
-  <link rel="stylesheet" href="/static/css/layout.css?v=5">
-  <link rel="stylesheet" href="/static/css/components.css?v=5">
-  <link rel="stylesheet" href="/static/css/forms.css?v=5">
-  <link rel="stylesheet" href="/static/css/tables.css?v=5">
-  <link rel="stylesheet" href="/static/css/pages.css?v=5">
-  <script src="/static/js/app.js?v=5" defer></script>
+  <link rel="icon" href="/static/favicon.svg?v=9" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/css/variables.css?v=9">
+  <link rel="stylesheet" href="/static/css/base.css?v=9">
+  <link rel="stylesheet" href="/static/css/layout.css?v=9">
+  <link rel="stylesheet" href="/static/css/components.css?v=9">
+  <link rel="stylesheet" href="/static/css/forms.css?v=9">
+  <link rel="stylesheet" href="/static/css/tables.css?v=9">
+  <link rel="stylesheet" href="/static/css/pages.css?v=9">
+  <script src="/static/js/app.js?v=10" defer></script>
 </head>
 <body data-page="{{ active_page }}" data-initial-bases="{{ available_bases|length }}"{% block body_data %}{% endblock %}>
   <aside class="sidebar" id="sidebar">
@@ -60,11 +60,12 @@
       </div>
     </header>
 
-    {% if message %}<div class="alert success" role="status"><span class="alert-icon">✓</span><span>{{ message }}</span></div>{% endif %}
-    {% if page_error %}<div class="alert danger" role="alert"><span class="alert-icon">!</span><span>{{ page_error }}</span></div>{% endif %}
-    {% for error in errors %}<div class="alert danger"><span class="alert-icon">!</span><span><strong>Не удалось получить данные RAS</strong><small>{{ error.endpoint }} — {{ error.error }}</small></span><button class="button secondary compact" type="button" data-refresh-button>Повторить</button></div>{% endfor %}
-
-    <div class="page-body">{% block content %}{% endblock %}</div>
+    <div class="page-body">
+      {% if message %}<div class="alert success" role="status"><span class="alert-icon">✓</span><span>{{ message }}</span></div>{% endif %}
+      {% if page_error %}<div class="alert danger" role="alert"><span class="alert-icon">!</span><span>{{ page_error }}</span></div>{% endif %}
+      {% for error in errors %}<div class="alert danger"><span class="alert-icon">!</span><span><strong>Не удалось получить данные RAS</strong><small>{{ error.endpoint }} — {{ error.error }}</small></span><button class="button secondary compact" type="button" data-refresh-button>Повторить</button></div>{% endfor %}
+      {% block content %}{% endblock %}
+    </div>
   </main>
   <div class="sidebar-backdrop" data-sidebar-backdrop></div>
   {% block dialogs %}{% endblock %}

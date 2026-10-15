@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import tomllib
@@ -18,6 +19,8 @@ class RasServer:
     port: int = 1545
     cluster_user: str = ""
     cluster_password: str = ""
+    cluster_user_env: str = ""
+    cluster_password_env: str = ""
 
     @property
     def endpoint(self) -> str:
@@ -30,6 +33,8 @@ class Settings:
     command_timeout_seconds: float
     log_file: Path
     servers: tuple[RasServer, ...]
+    poll_interval_seconds: float = 2.0
+    topology_refresh_seconds: float = 60.0
 
 
 def _resolve_secret(item: dict[str, object], direct_key: str, env_key: str) -> str:
@@ -44,7 +49,6 @@ def _find_rac(configured: str) -> Path:
         candidate = Path(os.path.expandvars(configured)).expanduser()
         if candidate.is_file():
             return candidate.resolve()
-        raise ConfigurationError(f"rac.exe not found at configured path: {candidate}")
     found = shutil.which("rac.exe") or shutil.which("rac")
     if found:
         return Path(found).resolve()
@@ -58,36 +62,92 @@ def _find_rac(configured: str) -> Path:
             candidates.extend(root.glob("*/bin/rac.exe"))
     if candidates:
         return sorted(candidates, reverse=True)[0].resolve()
-    raise ConfigurationError("rac.exe was not found; set rac_path in config.toml")
+    if configured:
+        raise ConfigurationError(
+            f"rac.exe не найден по сохранённому пути {candidate} и не обнаружен в установленных версиях 1С"
+        )
+    raise ConfigurationError(
+        "rac.exe не найден. Установите платформу 1С с компонентами администрирования сервера"
+    )
 
 
 def load_settings(path: Path) -> Settings:
     if not path.is_file():
-        raise ConfigurationError(f"file not found: {path} (copy config.example.toml)")
+        raise ConfigurationError(f"файл настроек не найден: {path}")
     try:
         data = tomllib.loads(path.read_text(encoding="utf-8-sig"))
     except (OSError, tomllib.TOMLDecodeError) as exc:
-        raise ConfigurationError(f"cannot read {path}: {exc}") from exc
+        raise ConfigurationError(f"не удалось прочитать {path}: {exc}") from exc
     raw_servers = data.get("servers")
     if not isinstance(raw_servers, list) or not raw_servers:
-        raise ConfigurationError("at least one [[servers]] entry is required")
+        raise ConfigurationError("нужно указать хотя бы один сервер RAS")
     servers: list[RasServer] = []
     for index, item in enumerate(raw_servers, 1):
         if not isinstance(item, dict) or not str(item.get("host", "")).strip():
-            raise ConfigurationError(f"servers entry #{index} requires host")
+            raise ConfigurationError(f"для RAS-сервера №{index} не указан адрес")
         servers.append(RasServer(
             name=str(item.get("name") or item["host"]),
             host=str(item["host"]),
             port=int(item.get("port", 1545)),
             cluster_user=_resolve_secret(item, "cluster_user", "cluster_user_env"),
             cluster_password=_resolve_secret(item, "cluster_password", "cluster_password_env"),
+            cluster_user_env=str(item.get("cluster_user_env", "")).strip(),
+            cluster_password_env=str(item.get("cluster_password_env", "")).strip(),
         ))
     timeout = float(data.get("command_timeout_seconds", 30))
     if timeout <= 0:
-        raise ConfigurationError("command_timeout_seconds must be positive")
+        raise ConfigurationError("тайм-аут команды должен быть больше нуля")
+    poll_interval = float(data.get("poll_interval_seconds", 2))
+    if poll_interval <= 0:
+        raise ConfigurationError("интервал обновления сеансов должен быть больше нуля")
+    topology_refresh = float(data.get("topology_refresh_seconds", 60))
+    if topology_refresh <= 0:
+        raise ConfigurationError("интервал обновления структуры серверов должен быть больше нуля")
     return Settings(
         rac_path=_find_rac(str(data.get("rac_path", ""))),
         command_timeout_seconds=timeout,
         log_file=Path(str(data.get("log_file", "logs/session-control.log"))),
         servers=tuple(servers),
+        poll_interval_seconds=poll_interval,
+        topology_refresh_seconds=topology_refresh,
     )
+
+
+def save_settings(path: Path, settings: Settings) -> None:
+    """Atomically persist settings without writing cluster credentials."""
+
+    def quoted(value: object) -> str:
+        return json.dumps(str(value), ensure_ascii=False)
+
+    lines = [
+        "# This file is managed by the web settings page.",
+        f"rac_path = {quoted(settings.rac_path)}",
+        f"command_timeout_seconds = {settings.command_timeout_seconds:g}",
+        f"log_file = {quoted(settings.log_file)}",
+        f"poll_interval_seconds = {settings.poll_interval_seconds:g}",
+        f"topology_refresh_seconds = {settings.topology_refresh_seconds:g}",
+    ]
+    for server in settings.servers:
+        lines.extend((
+            "",
+            "[[servers]]",
+            f"name = {quoted(server.name)}",
+            f"host = {quoted(server.host)}",
+            f"port = {server.port}",
+        ))
+        if server.cluster_user_env:
+            lines.append(f"cluster_user_env = {quoted(server.cluster_user_env)}")
+        if server.cluster_password_env:
+            lines.append(f"cluster_password_env = {quoted(server.cluster_password_env)}")
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f"{path.name}.tmp")
+    try:
+        temporary.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        temporary.replace(path)
+    except OSError as exc:
+        try:
+            temporary.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise ConfigurationError(f"не удалось записать {path}: {exc}") from exc

@@ -26,10 +26,13 @@ input[type="checkbox"], input[type="radio"] { width: 16px; height: 16px; padding
 .switch-line strong { font-weight: 500; }
 .switch { display: inline-flex; width: 36px; height: 20px; flex: 0 0 auto; }
 .switch input { position: absolute; width: 1px; height: 1px; opacity: 0; }
-.switch i { position: relative; width: 36px; height: 20px; border-radius: 10px; background: #484f58; transition: background 140ms ease; }
-.switch i::after { position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; content: ""; background: #c9d1d9; transition: left 140ms ease; }
+.switch i { position: relative; width: 36px; height: 20px; border-radius: 10px; background: var(--control-muted); transition: background 140ms ease; }
+.switch i::after { position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; content: ""; background: var(--text-code); transition: left 140ms ease; }
 .switch input:checked + i { background: var(--accent); }.switch input:checked + i::after { left: 19px; background: white; }
 .form-actions { display: flex; align-items: center; gap: 12px; padding-top: 16px; }
 .form-message { color: var(--success); font-size: 12px; }
+body[data-page="sessions"] .filter-bar { display: grid; grid-template-columns: 180px 180px 140px minmax(260px,1fr); gap: 12px; }
+body[data-page="sessions"] .filter-bar > label, body[data-page="sessions"] .filter-bar .search-box { width: 100%; min-width: 0; }
+@media (max-width: 1200px) { body[data-page="sessions"] .filter-bar { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 @media (max-width: 800px) { .filter-bar { align-items: stretch; flex-wrap: wrap; } .filter-bar > label:not(.search-box), .search-box.grow { min-width: calc(50% - 4px); flex: 1; } }
-@media (max-width: 600px) { .filter-bar > label:not(.search-box), .search-box.grow, .search-box { width: 100%; min-width: 0; } .form-row { grid-template-columns: 1fr; gap: 6px; padding: 12px 0; } }
+@media (max-width: 600px) { .filter-bar > label:not(.search-box), .search-box.grow, .search-box { width: 100%; min-width: 0; } body[data-page="sessions"] .filter-bar { grid-template-columns: 1fr; } .form-row { grid-template-columns: 1fr; gap: 6px; padding: 12px 0; } }

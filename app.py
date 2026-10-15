@@ -31,7 +31,7 @@ def configure_logging(log_file: Path, verbose: bool) -> None:
     try:
         handlers.append(logging.FileHandler(log_file, encoding="utf-8"))
     except OSError as exc:
-        print(f"Warning: cannot open log file {log_file}: {exc}", file=sys.stderr)
+        print(f"Внимание: не удалось открыть файл журнала {log_file}: {exc}", file=sys.stderr)
     logging.basicConfig(level=level, format=formatter._fmt, datefmt=formatter.datefmt, handlers=handlers)
 
 
@@ -49,6 +49,7 @@ async def lifespan(application: FastAPI):
     settings = load_settings(config_path)
     configure_logging(settings.log_file, False)
     application.state.settings = settings
+    application.state.config_path = config_path
     application.state.rac = RacClient(settings.rac_path, settings.command_timeout_seconds)
     application.state.credentials = CredentialStore()
     data_directory = Path(os.environ.get("SESSION_CONTROL_DATA_DIR", "data"))
@@ -57,6 +58,8 @@ async def lifespan(application: FastAPI):
         application.state.rac,
         settings.servers,
         application.state.companies,
+        poll_seconds=settings.poll_interval_seconds,
+        topology_seconds=settings.topology_refresh_seconds,
     )
     application.state.monitor.start()
     try:
@@ -89,7 +92,7 @@ def main() -> int:
     try:
         settings = load_settings(args.config)
     except ConfigurationError as exc:
-        print(f"Configuration error: {exc}", file=sys.stderr)
+        print(f"Ошибка настроек: {exc}", file=sys.stderr)
         return 2
 
     configure_logging(settings.log_file, args.verbose)
@@ -97,7 +100,7 @@ def main() -> int:
     try:
         version = rac.version()
     except RacError as exc:
-        logging.error("rac.exe check failed: %s", exc)
+        logging.error("Проверка rac.exe завершилась с ошибкой: %s", exc)
         return 3
 
     print(f"RAC: {settings.rac_path}")
@@ -109,7 +112,7 @@ def main() -> int:
             print_report(report, connectivity_only=args.check)
         except RacError as exc:
             failures += 1
-            logging.error("RAS %s is unavailable: %s", server.endpoint, exc)
+            logging.error("RAS %s недоступен: %s", server.endpoint, exc)
             print(f"\nRAS {server.name} ({server.endpoint}): ERROR — {exc}")
     return 1 if failures == len(settings.servers) else 0
 

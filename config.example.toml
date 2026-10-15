@@ -1,12 +1,14 @@
-# Full path is preferred when several 1C platform versions are installed.
-rac_path = "C:\\Program Files\\1cv8\\8.3.xx.xxxx\\bin\\rac.exe"
+# Пустое значение включает автоматический поиск rac.exe в установленных версиях 1С.
+rac_path = ""
 command_timeout_seconds = 30
 log_file = "logs/session-control.log"
+poll_interval_seconds = 2
+topology_refresh_seconds = 60
 
 [[servers]]
 name = "SRV-1C01"
 host = "127.0.0.1"
 port = 1545
-# Store credentials in environment variables, not in this file.
+# Учётные данные берутся из переменных среды и не сохраняются в этом файле.
 cluster_user_env = "SESSION_CONTROL_CLUSTER_USER"
 cluster_password_env = "SESSION_CONTROL_CLUSTER_PASSWORD"

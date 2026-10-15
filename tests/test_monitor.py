@@ -1,8 +1,9 @@
 import unittest
 
+from config import RasServer
 from web.auth import ClusterCredentials
 from web.company_store import AssignedInfobase, Company
-from web.monitor import MonitorService, is_user_session
+from web.monitor import MonitorService, application_name, is_user_session
 
 
 class FakeRac:
@@ -22,6 +23,12 @@ class FakeCompanies:
 
 
 class SessionClassificationTests(unittest.TestCase):
+    def test_application_names_are_localized(self) -> None:
+        self.assertEqual(application_name("1CV8C"), "1С:Предприятие (тонкий клиент)")
+        self.assertEqual(application_name("Designer"), "Конфигуратор")
+        self.assertEqual(application_name("BackgroundJob"), "Фоновое задание")
+        self.assertEqual(application_name("CustomClient"), "CustomClient")
+
     def test_only_interactive_non_admin_session_is_counted(self) -> None:
         self.assertTrue(is_user_session({"id": "1", "app_id": "1CV8C", "user_name": "Ivan"}))
         self.assertFalse(is_user_session({"id": "2", "app_id": "BackgroundJob", "user_name": "Ivan"}))
@@ -63,6 +70,30 @@ class SessionClassificationTests(unittest.TestCase):
         monitor._enforce(snapshots, ClusterCredentials("admin", "secret"))
 
         self.assertEqual(rac.terminated, ["new"])
+
+    def test_reconfigure_replaces_runtime_connection_settings(self) -> None:
+        original_rac = FakeRac()
+        replacement_rac = FakeRac()
+        monitor = MonitorService(
+            original_rac,
+            (),
+            FakeCompanies(Company(id=1, name="Компания", session_limit=0, bases=())),
+        )
+        monitor._topology = {"old": object()}
+        server = RasServer("Новый", "10.0.0.5", 1546)
+
+        monitor.reconfigure(
+            replacement_rac,
+            (server,),
+            poll_seconds=1.5,
+            topology_seconds=45,
+        )
+
+        self.assertIs(monitor.rac, replacement_rac)
+        self.assertEqual(monitor.servers, (server,))
+        self.assertEqual(monitor.poll_seconds, 1.5)
+        self.assertEqual(monitor.topology_seconds, 45)
+        self.assertEqual(monitor._topology, {})
 
 
 if __name__ == "__main__":

@@ -63,7 +63,7 @@ def _collect(
         try:
             snapshots.append(asdict(service.collect(server)))
         except RacError as exc:
-            log.error("RAS %s is unavailable: %s", server.endpoint, exc)
+            log.error("RAS %s недоступен: %s", server.endpoint, exc)
             errors.append({"server": server.name, "endpoint": server.endpoint, "error": str(exc)})
     return snapshots, errors
 
@@ -222,7 +222,7 @@ async def login(request: Request) -> HTMLResponse:
     try:
         await run_in_threadpool(_validate_credentials, request, credentials)
     except RacError as exc:
-        log.warning("Cluster administrator authentication failed: %s", exc)
+        log.warning("Не удалось выполнить вход администратора кластера: %s", exc)
         return _login_page(request, f"Не удалось войти: {exc}", username)
     token = request.app.state.credentials.create(credentials)
     response = RedirectResponse(url="/", status_code=303)

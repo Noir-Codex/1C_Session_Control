@@ -11,12 +11,12 @@ h1 { font-size: 28px; font-weight: 600; line-height: 1.25; letter-spacing: -.02e
 h2 { font-size: 18px; font-weight: 600; }
 h3 { font-size: 15px; font-weight: 600; }
 small { font-size: 12px; }
-code { color: #c9d1d9; font: 12px/1.4 "Cascadia Mono", Consolas, monospace; }
+code { color: var(--text-code); font: 12px/1.4 "Cascadia Mono", Consolas, monospace; }
 [hidden] { display: none !important; }
 .icon { width: 16px; height: 16px; flex: 0 0 auto; }
 .muted { color: var(--text-muted); }
 :focus-visible { outline: 2px solid rgba(47,129,247,.75); outline-offset: 2px; }
-* { scrollbar-width: thin; scrollbar-color: #484f58 var(--bg-main); }
+* { scrollbar-width: thin; scrollbar-color: var(--control-muted) var(--bg-main); }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: var(--bg-main); }
-::-webkit-scrollbar-thumb { border: 2px solid var(--bg-main); border-radius: 8px; background: #484f58; }
+::-webkit-scrollbar-thumb { border: 2px solid var(--bg-main); border-radius: 8px; background: var(--control-muted); }
